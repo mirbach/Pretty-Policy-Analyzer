@@ -49,7 +49,7 @@ def scan_folder(request: ScanRequest):
 @app.post("/api/scan-upload", response_model=ScanStatus)
 async def scan_upload(files: list[UploadedFileItem]):
     """Accept uploaded GPO files from browser File System Access API."""
-    upload_dir = Path.home() / ".gpoanalyzer" / "upload_cache"
+    upload_dir = Path.home() / ".pretty-policy-analyzer" / "upload_cache"
     if upload_dir.exists():
         shutil.rmtree(upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)

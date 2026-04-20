@@ -74,14 +74,14 @@ pip install -r requirements.txt
 
 **Backend** (port 8000):
 ```powershell
-Set-Location c:\git\GPOAnalyzer\backend
-$env:PYTHONPATH = "c:\git\GPOAnalyzer\backend"
+Set-Location c:\git\Pretty-Policy-Analyzer\backend
+$env:PYTHONPATH = "c:\git\Pretty-Policy-Analyzer\backend"
 python3.13 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 **Frontend** (port 5173):
 ```powershell
-Set-Location c:\git\GPOAnalyzer\frontend
+Set-Location c:\git\Pretty-Policy-Analyzer\frontend
 npm run dev
 ```
 

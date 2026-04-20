@@ -18,7 +18,7 @@ export const PROVIDER_MODELS: Record<AIProvider, string[]> = {
   gemini: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
 };
 
-const STORAGE_KEY = 'gpoanalyzer_ai_config';
+const STORAGE_KEY = 'pretty_policy_analyzer_ai_config';
 
 export function loadAIConfig(): AIConfig | null {
   try {

@@ -1,5 +1,5 @@
 {
-  "name": "gpo-analyzer",
+  "name": "pretty-policy-analyzer",
   "version": "1.0.0",
   "description": "Pretty Policy Analyzer Setup",
   "author": "Pretty Policy Analyzer",
@@ -28,7 +28,7 @@
     "typescript": "^5.7.2"
   },
   "build": {
-    "appId": "com.gpoanalyzer.app",
+    "appId": "com.prettypolicyanalyzer.app",
     "productName": "Pretty Policy Analyzer",
     "directories": {
       "output": "release"

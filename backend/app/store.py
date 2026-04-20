@@ -11,7 +11,7 @@ from .analysis.categorizer import categorize_settings
 from .models import GPODetail, ScanStatus, BaselineStatus
 from .parsers.gpo_parser import scan_gpo_folder
 
-CONFIG_DIR = Path.home() / ".gpoanalyzer"
+CONFIG_DIR = Path.home() / ".pretty-policy-analyzer"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 
@@ -60,7 +60,7 @@ class GPOStore:
         self._folder_path = ""
         self._parse_errors = []
         # Remove upload cache if present
-        upload_dir = Path.home() / ".gpoanalyzer" / "upload_cache"
+        upload_dir = Path.home() / ".pretty-policy-analyzer" / "upload_cache"
         if upload_dir.exists():
             shutil.rmtree(upload_dir, ignore_errors=True)
         # Clear saved config
@@ -109,7 +109,7 @@ class GPOStore:
 
     def clear_baselines(self) -> BaselineStatus:
         self._baselines.clear()
-        cache = Path.home() / ".gpoanalyzer" / "baselines_cache"
+        cache = Path.home() / ".pretty-policy-analyzer" / "baselines_cache"
         if cache.exists():
             import shutil
             shutil.rmtree(cache, ignore_errors=True)

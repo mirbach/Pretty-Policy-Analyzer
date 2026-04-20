@@ -6,7 +6,7 @@ After making **any** code change, you must:
 
 1. **Run the TypeScript build** to verify the frontend compiles cleanly:
    ```powershell
-   cd c:\git\GPOAnalyzer\frontend
+   cd c:\git\Pretty-Policy-Analyzer\frontend
    npx tsc --noEmit
    ```
 
@@ -15,15 +15,15 @@ After making **any** code change, you must:
 3. **Restart the backend** if any Python file was changed:
    ```powershell
    Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue
-   Set-Location c:\git\GPOAnalyzer\backend
-   $env:PYTHONPATH = "c:\git\GPOAnalyzer\backend"
+   Set-Location c:\git\Pretty-Policy-Analyzer\backend
+   $env:PYTHONPATH = "c:\git\Pretty-Policy-Analyzer\backend"
    python3.13 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
    ```
 
 ## Project Structure
 
 ```
-GPOAnalyzer/
+Pretty-Policy-Analyzer/
   backend/          # Python 3.13 FastAPI backend
     app/
       main.py       # FastAPI app entry point, API routes
@@ -53,14 +53,14 @@ GPOAnalyzer/
 
 **Backend** (port 8000):
 ```powershell
-Set-Location c:\git\GPOAnalyzer\backend
-$env:PYTHONPATH = "c:\git\GPOAnalyzer\backend"
+Set-Location c:\git\Pretty-Policy-Analyzer\backend
+$env:PYTHONPATH = "c:\git\Pretty-Policy-Analyzer\backend"
 python3.13 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 **Frontend** (port 5173):
 ```powershell
-Set-Location c:\git\GPOAnalyzer\frontend
+Set-Location c:\git\Pretty-Policy-Analyzer\frontend
 npm run dev
 ```
 
@@ -72,6 +72,6 @@ Open `http://localhost:5173` in **Chrome or Edge** (required for `showDirectoryP
 - Tailwind `darkMode: 'class'` — the `dark` class is toggled on `<html>`.
 - Custom color palette uses `surface-50` through `surface-950`.
 - Folder picker uses `window.showDirectoryPicker()` in browser (Chrome/Edge), Electron IPC in desktop, and inline text input as a Firefox fallback.
-- Uploaded GPO files are written to `~/.gpoanalyzer/upload_cache/` and scanned from there.
+- Uploaded GPO files are written to `~/.pretty-policy-analyzer/upload_cache/` and scanned from there.
 - Backend port-conflict fix: `Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force`
 - GPO XML files may be UTF-16 or UTF-8; `gpreport_parser.py` handles both via BOM detection.

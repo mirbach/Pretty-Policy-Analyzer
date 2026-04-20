@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for the GPO Analyzer backend sidecar."""
+"""PyInstaller spec for the Pretty Policy Analyzer backend sidecar."""
 
 import sys
 from pathlib import Path

@@ -15,7 +15,7 @@ const APP_NAME = 'Pretty Policy Analyzer';
 
 app.setName(APP_NAME);
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.gpoanalyzer.app');
+  app.setAppUserModelId('com.prettypolicyanalyzer.app');
 }
 
 let mainWindow: BrowserWindow | null = null;

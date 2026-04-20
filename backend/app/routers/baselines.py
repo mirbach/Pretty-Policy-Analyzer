@@ -69,7 +69,7 @@ def scan_baselines(request: ScanRequest):
 @router.post("/upload", response_model=BaselineStatus)
 async def upload_baseline(files: list[UploadedFileItem]):
     """Upload Security Baseline GPO backup files from browser (additive)."""
-    baseline_dir = Path.home() / ".gpoanalyzer" / "baselines_cache"
+    baseline_dir = Path.home() / ".pretty-policy-analyzer" / "baselines_cache"
     baseline_dir.mkdir(parents=True, exist_ok=True)
 
     for f in files:
