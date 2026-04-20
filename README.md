@@ -1,6 +1,7 @@
 # Pretty Policy Analyzer
 
 A desktop/web app for security engineers and Active Directory administrators to load, browse, compare, audit, and baseline-check Group Policy Object (GPO) backups — without needing a domain controller.
+<img width="1184" height="1170" alt="image" src="https://github.com/user-attachments/assets/2340d85f-a3fa-43ed-a6f2-6d41bf5be136" />
 
 ---
 
