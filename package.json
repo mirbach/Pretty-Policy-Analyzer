@@ -1,0 +1,56 @@
+{
+  "name": "gpo-analyzer",
+  "version": "1.0.0",
+  "description": "Analyze, compare, and find conflicts in Active Directory Group Policy backups",
+  "author": "Pretty Policy Analyzer",
+  "license": "MIT",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev:electron": "tsc -p electron/tsconfig.json && electron dist-electron/main.js",
+    "dev": "concurrently -n fe,be -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "build:frontend": "cd frontend && npm run build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:backend": "cd backend && pyinstaller --noconfirm --onedir --name gpo-backend app/main.py",
+    "build": "npm run build:frontend && npm run build:electron && npm run build:backend",
+    "package": "npm run build && electron-builder",
+    "postinstall": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "com.gpoanalyzer.app",
+    "productName": "Pretty Policy Analyzer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "frontend/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist/gpo-backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
