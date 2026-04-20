@@ -10,10 +10,11 @@
     "dev:backend": "cd backend && python3.13 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "dev:electron": "tsc -p electron/tsconfig.json && electron dist-electron/main.js",
     "dev": "concurrently -n fe,be -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "sync:icon": "magick frontend/src/assets/PPALogo.png -background none -alpha on -define icon:auto-resize=256,128,64,48,32,16 electron/icon.ico",
     "build:frontend": "cd frontend && npm run build",
     "build:electron": "tsc -p electron/tsconfig.json",
     "build:backend": "cd backend && python3.13 -m PyInstaller --noconfirm gpo-backend.spec",
-    "build": "npm run build:frontend && npm run build:electron && npm run build:backend",
+    "build": "npm run sync:icon && npm run build:frontend && npm run build:electron && npm run build:backend",
     "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --icon=electron/icon.ico --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
     "installer:win": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& npm run build && electron-builder --win nsis --publish never",
     "postinstall": "cd frontend && npm install"

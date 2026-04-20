@@ -4,7 +4,7 @@ import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
 import { exportSelectedGPOs } from '../lib/exportExcel';
 import { AISettingsModal } from './AISettingsModal';
-import logo from '../assets/PPALogo.jpg';
+import logo from '../assets/PPALogo.png';
 import {
   LayoutDashboard,
   GitCompare,
