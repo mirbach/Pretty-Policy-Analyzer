@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useScanFolder, useScanUpload } from '../hooks/useApi';
 import type { UploadedFileItem } from '../lib/api';
+import logo from '../assets/PPALogo.png';
 import { FolderOpen, AlertCircle, ArrowRight, Loader } from 'lucide-react';
 
 /** Recursively collect all files from a FileSystemDirectoryHandle. */
@@ -86,6 +87,13 @@ export function WelcomeScreen() {
     <div className="h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-950">
       <div className="max-w-lg w-full mx-4">
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <img
+              src={logo}
+              alt="Pretty Policy Analyzer logo"
+              className="h-24 w-auto drop-shadow-sm"
+            />
+          </div>
           <h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100 mb-2">
             Pretty Policy Analyzer
           </h1>
