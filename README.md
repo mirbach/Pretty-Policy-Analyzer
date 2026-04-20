@@ -184,15 +184,3 @@ Backup-GPO -Name "Default Domain Policy" -Path C:\GPOBackups
 ```
 
 ---
-
-## Security Baseline Setup
-
-1. Download the baseline ZIP from https://aka.ms/baselines (e.g. *Windows 11 Security Baseline*).
-2. Extract and locate the `GPOs` subfolder — it contains GUID-named GPO backup folders.
-3. In the app, click **Baseline** → **Load Baseline** and select that `GPOs` folder.
-4. Repeat for additional baselines (Windows Server, Edge, etc.) — they accumulate additively.
-5. The compliance report runs automatically against all loaded GPOs.
-
-Bundled baselines (loaded automatically in the Electron build):
-- Windows 11 v25H2 Security Baseline
-- Windows Server 2025 Security Baseline
