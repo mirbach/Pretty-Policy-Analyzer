@@ -1,7 +1,7 @@
 {
   "name": "gpo-analyzer",
   "version": "1.0.0",
-  "description": "Analyze, compare, and find conflicts in Active Directory Group Policy backups",
+  "description": "Pretty Policy Analyzer Setup",
   "author": "Pretty Policy Analyzer",
   "license": "MIT",
   "main": "dist-electron/main.js",
@@ -15,6 +15,7 @@
     "build:backend": "cd backend && python3.13 -m PyInstaller --noconfirm gpo-backend.spec",
     "build": "npm run build:frontend && npm run build:electron && npm run build:backend",
     "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --icon=electron/icon.ico --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
+    "installer:win": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& npm run build && electron-builder --win nsis --publish never",
     "postinstall": "cd frontend && npm install"
   },
   "devDependencies": {
@@ -23,6 +24,7 @@
     "concurrently": "^9.1.0",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "rcedit": "^5.0.2",
     "typescript": "^5.7.2"
   },
   "build": {
@@ -31,6 +33,7 @@
     "directories": {
       "output": "release"
     },
+    "afterPack": "./electron-builder.afterPack.js",
     "files": [
       "dist-electron/**/*",
       "frontend/dist/**/*"
@@ -38,7 +41,7 @@
     "extraResources": [
       {
         "from": "backend/dist/gpo-backend",
-        "to": "backend",
+        "to": "gpo-backend",
         "filter": [
           "**/*"
         ]
@@ -53,7 +56,17 @@
     ],
     "win": {
       "target": "nsis",
-      "forceCodeSigning": false
+      "icon": "electron/icon.ico",
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false,
+      "executableName": "Pretty Policy Analyzer"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "electron/icon.ico",
+      "uninstallerIcon": "electron/icon.ico",
+      "installerHeaderIcon": "electron/icon.ico"
     },
     "mac": {
       "target": "dmg"

@@ -11,6 +11,13 @@ function log(msg: string) {
   try { fs.appendFileSync(logFile, line); } catch { /* ignore */ }
 }
 
+const APP_NAME = 'Pretty Policy Analyzer';
+
+app.setName(APP_NAME);
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.gpoanalyzer.app');
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = !app.isPackaged;
@@ -22,7 +29,7 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    title: 'Pretty Policy Analyzer',
+    title: APP_NAME,
     icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
