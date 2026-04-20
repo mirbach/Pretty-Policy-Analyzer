@@ -146,3 +146,8 @@ export interface BaselineStatus {
   loaded: boolean;
   parse_errors: Array<{ folder: string; error: string }>;
 }
+
+export interface BundledBaseline {
+  name: string;
+  gpo_count: number;
+}

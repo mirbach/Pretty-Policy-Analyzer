@@ -9,6 +9,7 @@ import type {
   PolicySetting,
   BaselineStatus,
   BaselineComplianceReport,
+  BundledBaseline,
 } from '../types/gpo';
 
 // In Electron, the port is passed via the preload script
@@ -100,6 +101,16 @@ export async function healthCheck(): Promise<boolean> {
 
 export async function listBaselines(): Promise<GPOInfo[]> {
   const { data } = await api.get('/api/baselines');
+  return data;
+}
+
+export async function listBundledBaselines(): Promise<BundledBaseline[]> {
+  const { data } = await api.get('/api/baselines/bundled');
+  return data;
+}
+
+export async function loadBundledBaseline(name: string): Promise<BaselineStatus> {
+  const { data } = await api.post(`/api/baselines/bundled/${encodeURIComponent(name)}`);
   return data;
 }
 

@@ -97,6 +97,24 @@ export function useBaselines() {
   });
 }
 
+export function useBundledBaselines() {
+  return useQuery({
+    queryKey: ['bundled-baselines'],
+    queryFn: api.listBundledBaselines,
+  });
+}
+
+export function useLoadBundledBaseline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.loadBundledBaseline(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['baselines'] });
+      qc.invalidateQueries({ queryKey: ['baseline-compliance'] });
+    },
+  });
+}
+
 export function useUploadBaseline() {
   const qc = useQueryClient();
   return useMutation({

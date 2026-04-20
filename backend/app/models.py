@@ -186,6 +186,11 @@ class BaselineComplianceReport(BaseModel):
     compliant: list[BaselineViolation] = Field(default_factory=list)
 
 
+class BundledBaseline(BaseModel):
+    name: str
+    gpo_count: int
+
+
 class BaselineStatus(BaseModel):
     baseline_count: int = 0
     loaded: bool = False

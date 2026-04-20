@@ -1,19 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   useBaselines,
-  useUploadBaseline,
-  useScanBaseline,
+  useBundledBaselines,
+  useLoadBundledBaseline,
   useClearBaselines,
   useBaselineCompliance,
   useStatus,
 } from '../hooks/useApi';
-import type { UploadedFileItem } from '../lib/api';
 import type { BaselineViolation } from '../types/gpo';
 import {
   ShieldCheck,
   ShieldAlert,
   ShieldOff,
-  FolderOpen,
   Loader,
   ChevronDown,
   ChevronRight,
@@ -21,28 +19,6 @@ import {
   Search,
   AlertTriangle,
 } from 'lucide-react';
-
-/** Recursively collect all files from a FileSystemDirectoryHandle. */
-async function collectFiles(
-  dirHandle: FileSystemDirectoryHandle,
-  prefix = ''
-): Promise<UploadedFileItem[]> {
-  const files: UploadedFileItem[] = [];
-  for await (const [name, handle] of dirHandle as any) {
-    const relPath = prefix ? `${prefix}/${name}` : name;
-    if (handle.kind === 'file') {
-      const file: File = await (handle as FileSystemFileHandle).getFile();
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-      files.push({ relative_path: relPath, content_b64: btoa(binary) });
-    } else if (handle.kind === 'directory') {
-      files.push(...(await collectFiles(handle as FileSystemDirectoryHandle, relPath)));
-    }
-  }
-  return files;
-}
 
 type FilterTab = 'all' | 'missing' | 'wrong_value' | 'compliant';
 
@@ -138,60 +114,28 @@ function ViolationRow({ v }: { v: BaselineViolation }) {
 
 export function BaselineView() {
   const { data: baselines = [], isLoading: baselinesLoading } = useBaselines();
+  const { data: bundledBaselines = [] } = useBundledBaselines();
   const { data: status } = useStatus();
   const gpoCount = status?.gpo_count ?? 0;
-  const uploadMutation = useUploadBaseline();
-  const scanMutation = useScanBaseline();
+  const loadBundledMutation = useLoadBundledBaseline();
   const clearMutation = useClearBaselines();
 
   const [selectedBaselineId, setSelectedBaselineId] = useState<string | null>(null);
-  const [isReading, setIsReading] = useState(false);
-  const [readError, setReadError] = useState<string | null>(null);
-  const [showFolderInput, setShowFolderInput] = useState(false);
-  const [folderPath, setFolderPath] = useState('');
+  const [selectedBundled, setSelectedBundled] = useState<string>('');
+
+  const handleClear = () => {
+    clearMutation.mutate(undefined, {
+      onSuccess: () => setSelectedBaselineId(null),
+    });
+  };
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [search, setSearch] = useState('');
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveBaselineId = selectedBaselineId ?? baselines[0]?.id ?? null;
   const { data: report, isLoading: reportLoading, error: reportError } = useBaselineCompliance(effectiveBaselineId, gpoCount);
 
-  const isPending = uploadMutation.isPending || scanMutation.isPending || isReading;
-  const uploadError =
-    readError ||
-    (uploadMutation.error as any)?.response?.data?.detail ||
-    (scanMutation.error as any)?.response?.data?.detail;
-
-  const handleLoadBaseline = async () => {
-    setReadError(null);
-    if ((window as any).__electronAPI?.selectFolder) {
-      const path = await (window as any).__electronAPI.selectFolder();
-      if (path) scanMutation.mutate(path);
-      return;
-    }
-    if (typeof (window as any).showDirectoryPicker === 'function') {
-      try {
-        const dirHandle: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker();
-        setIsReading(true);
-        const files = await collectFiles(dirHandle);
-        setIsReading(false);
-        uploadMutation.mutate(files);
-      } catch (e: any) {
-        setIsReading(false);
-        if (e.name !== 'AbortError') setReadError('Could not read folder: ' + (e.message ?? String(e)));
-      }
-      return;
-    }
-    setShowFolderInput(true);
-    setTimeout(() => folderInputRef.current?.focus(), 0);
-  };
-
-  const handleFolderSubmit = () => {
-    if (folderPath.trim()) {
-      scanMutation.mutate(folderPath.trim());
-      setShowFolderInput(false);
-    }
-  };
+  const isPending = loadBundledMutation.isPending;
+  const loadError = (loadBundledMutation.error as any)?.response?.data?.detail;
 
   // Filter violations based on tab + search
   const allViolations = report ? [...report.violations] : [];
@@ -233,45 +177,39 @@ export function BaselineView() {
           <div className="flex items-center gap-2">
             {baselines.length > 0 && (
               <button
-                onClick={() => clearMutation.mutate()}
+                onClick={() => handleClear()}
                 disabled={clearMutation.isPending}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                title="Remove all baselines"
+                title="Remove loaded baseline"
               >
                 <Trash2 size={13} />
-                Clear baselines
+                Clear
               </button>
             )}
-            {!showFolderInput ? (
-              <button
-                onClick={handleLoadBaseline}
-                disabled={isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-surface-400 text-white text-xs font-medium rounded-md transition-colors"
-              >
-                {isPending ? <Loader size={13} className="animate-spin" /> : <FolderOpen size={13} />}
-                {isPending ? 'Loading…' : 'Load Baseline'}
-              </button>
-            ) : (
-              <div className="flex gap-1.5">
-                <input
-                  ref={folderInputRef}
-                  type="text"
-                  value={folderPath}
-                  onChange={(e) => setFolderPath(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleFolderSubmit()}
-                  placeholder="C:\SecurityBaselines"
-                  className="text-xs px-2 py-1.5 border border-surface-300 dark:border-surface-600 rounded bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 w-56 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button onClick={handleFolderSubmit} className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded">Scan</button>
-                <button onClick={() => setShowFolderInput(false)} className="px-2 py-1.5 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 text-xs rounded">✕</button>
-              </div>
-            )}
+            <select
+              value={selectedBundled}
+              onChange={(e) => setSelectedBundled(e.target.value)}
+              className="text-xs px-2 py-1.5 border border-surface-300 dark:border-surface-600 rounded bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Select baseline…</option>
+              {bundledBaselines.map((b) => (
+                <option key={b.name} value={b.name}>{b.name} ({b.gpo_count} GPOs)</option>
+              ))}
+            </select>
+            <button
+              onClick={() => selectedBundled && loadBundledMutation.mutate(selectedBundled)}
+              disabled={!selectedBundled || isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-surface-400 text-white text-xs font-medium rounded-md transition-colors"
+            >
+              {isPending ? <Loader size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+              {isPending ? 'Loading…' : 'Load'}
+            </button>
           </div>
         </div>
 
-        {uploadError && (
+        {loadError && (
           <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600 dark:text-red-400 text-xs mb-2">
-            <AlertTriangle size={13} /> {uploadError}
+            <AlertTriangle size={13} /> {loadError}
           </div>
         )}
 
@@ -302,14 +240,7 @@ export function BaselineView() {
               No Security Baseline Loaded
             </h3>
             <p className="text-sm text-surface-500 mb-4">
-              Load a Microsoft Security Baseline (provided as a GPO backup) to check your policies for compliance gaps.
-            </p>
-            <p className="text-xs text-surface-400">
-              Download baselines from{' '}
-              <span className="font-mono text-blue-600 dark:text-blue-400">
-                aka.ms/baselines
-              </span>
-              {' '}and extract the GPO Backup folder.
+              Select a bundled Microsoft Security Baseline from the dropdown above and click <strong>Load</strong> to check your policies for compliance gaps.
             </p>
           </div>
         </div>
