@@ -7,6 +7,8 @@ import type {
   ScanStatus,
   SearchResult,
   PolicySetting,
+  BaselineStatus,
+  BaselineComplianceReport,
 } from '../types/gpo';
 
 // In Electron, the port is passed via the preload script
@@ -92,6 +94,33 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ── Baseline API ──────────────────────────────────────────────────────────────
+
+export async function listBaselines(): Promise<GPOInfo[]> {
+  const { data } = await api.get('/api/baselines');
+  return data;
+}
+
+export async function uploadBaseline(files: UploadedFileItem[]): Promise<BaselineStatus> {
+  const { data } = await api.post('/api/baselines/upload', files);
+  return data;
+}
+
+export async function scanBaseline(folderPath: string): Promise<BaselineStatus> {
+  const { data } = await api.post('/api/baselines/scan', { folder_path: folderPath });
+  return data;
+}
+
+export async function clearBaselines(): Promise<BaselineStatus> {
+  const { data } = await api.delete('/api/baselines');
+  return data;
+}
+
+export async function getBaselineCompliance(baselineId: string): Promise<BaselineComplianceReport> {
+  const { data } = await api.get(`/api/baselines/${encodeURIComponent(baselineId)}/compliance`);
+  return data;
 }
 
 export default api;

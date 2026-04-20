@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .models import ScanRequest, ScanStatus, UploadedFileItem
-from .routers import compare, conflicts, gpos
+from .routers import compare, conflicts, gpos, baselines
 from .store import get_store
 
 app = FastAPI(
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(gpos.router)
 app.include_router(compare.router)
 app.include_router(conflicts.router)
+app.include_router(baselines.router)
 
 
 @app.get("/api/status", response_model=ScanStatus)

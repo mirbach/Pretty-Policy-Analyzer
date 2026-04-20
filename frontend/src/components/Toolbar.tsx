@@ -16,9 +16,10 @@ import {
   Trash2,
   FileDown,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 
-type View = 'detail' | 'compare' | 'conflicts' | 'search';
+type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
 
 /** Recursively collect all files from a FileSystemDirectoryHandle. */
 async function collectFiles(
@@ -115,6 +116,7 @@ export function Toolbar({
     { view: 'detail', icon: LayoutDashboard, label: 'Browse' },
     { view: 'conflicts', icon: AlertTriangle, label: 'Conflicts' },
     { view: 'search', icon: Search, label: 'Search' },
+    { view: 'baseline', icon: ShieldCheck, label: 'Baseline' },
   ];
 
   return (

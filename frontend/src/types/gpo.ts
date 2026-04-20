@@ -102,3 +102,47 @@ export interface SearchResult {
   gpo_name: string;
   setting: PolicySetting;
 }
+
+// ── Security Baseline types ───────────────────────────────────────────────────
+
+export type BaselineViolationStatus = 'compliant' | 'wrong_value' | 'missing';
+
+export interface GPOFinding {
+  gpo_id: string;
+  gpo_name: string;
+  value: unknown;
+  value_display: string;
+  state: string;
+  matches: boolean;
+}
+
+export interface BaselineViolation {
+  key_path: string;
+  value_name: string;
+  display_name: string;
+  category: string;
+  scope: string;
+  expected_value: unknown;
+  expected_value_display: string;
+  expected_state: string;
+  setting_type: string;
+  status: BaselineViolationStatus;
+  gpo_findings: GPOFinding[];
+}
+
+export interface BaselineComplianceReport {
+  baseline_id: string;
+  baseline_name: string;
+  total_baseline_settings: number;
+  compliant_count: number;
+  wrong_value_count: number;
+  missing_count: number;
+  violations: BaselineViolation[];
+  compliant: BaselineViolation[];
+}
+
+export interface BaselineStatus {
+  baseline_count: number;
+  loaded: boolean;
+  parse_errors: Array<{ folder: string; error: string }>;
+}

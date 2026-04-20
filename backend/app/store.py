@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from .analysis.categorizer import categorize_settings
-from .models import GPODetail, ScanStatus
+from .models import GPODetail, ScanStatus, BaselineStatus
 from .parsers.gpo_parser import scan_gpo_folder
 
 CONFIG_DIR = Path.home() / ".gpoanalyzer"
@@ -20,6 +20,7 @@ class GPOStore:
         self._gpos: dict[str, GPODetail] = {}
         self._folder_path: str = ""
         self._parse_errors: list[dict[str, str]] = []
+        self._baselines: dict[str, GPODetail] = {}
 
     def scan(self, folder_path: str) -> ScanStatus:
         """Scan a folder for GPO backups and load them."""
@@ -85,6 +86,34 @@ class GPOStore:
         except (OSError, json.JSONDecodeError):
             pass
         return None
+
+    # ── Baseline methods ──────────────────────────────────────────────────────
+
+    def scan_baselines(self, folder_path: str) -> BaselineStatus:
+        """Parse a folder of GPO backups as security baselines."""
+        gpos, errors = scan_gpo_folder(folder_path)
+        for gpo in gpos:
+            categorize_settings(gpo.settings)
+            self._baselines[gpo.info.id] = gpo
+        return BaselineStatus(
+            baseline_count=len(self._baselines),
+            loaded=len(self._baselines) > 0,
+            parse_errors=errors,
+        )
+
+    def list_baselines(self) -> list[GPODetail]:
+        return sorted(self._baselines.values(), key=lambda g: g.info.display_name)
+
+    def get_baseline(self, baseline_id: str) -> Optional[GPODetail]:
+        return self._baselines.get(baseline_id)
+
+    def clear_baselines(self) -> BaselineStatus:
+        self._baselines.clear()
+        cache = Path.home() / ".gpoanalyzer" / "baselines_cache"
+        if cache.exists():
+            import shutil
+            shutil.rmtree(cache, ignore_errors=True)
+        return BaselineStatus(baseline_count=0, loaded=False)
 
 
 # Singleton

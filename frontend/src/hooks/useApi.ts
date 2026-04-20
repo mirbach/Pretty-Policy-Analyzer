@@ -87,3 +87,47 @@ export function useSearchAll(query: string) {
     enabled: query.length >= 2,
   });
 }
+
+// ── Baseline hooks ────────────────────────────────────────────────────────────
+
+export function useBaselines() {
+  return useQuery({
+    queryKey: ['baselines'],
+    queryFn: api.listBaselines,
+  });
+}
+
+export function useUploadBaseline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (files: UploadedFileItem[]) => api.uploadBaseline(files),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['baselines'] }),
+  });
+}
+
+export function useScanBaseline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (folderPath: string) => api.scanBaseline(folderPath),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['baselines'] }),
+  });
+}
+
+export function useClearBaselines() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.clearBaselines(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['baselines'] });
+      qc.invalidateQueries({ queryKey: ['baseline-compliance'] });
+    },
+  });
+}
+
+export function useBaselineCompliance(baselineId: string | null, gpoCount: number) {
+  return useQuery({
+    queryKey: ['baseline-compliance', baselineId],
+    queryFn: () => api.getBaselineCompliance(baselineId!),
+    enabled: !!baselineId && gpoCount > 0,
+  });
+}

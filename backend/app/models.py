@@ -142,3 +142,51 @@ class ScanStatus(BaseModel):
     total_settings: int = 0
     parse_errors: list[dict[str, str]] = Field(default_factory=list)
     loaded: bool = False
+
+
+# ── Security Baseline models ──────────────────────────────────────────────────
+
+class BaselineViolationStatus(str, Enum):
+    COMPLIANT = "compliant"
+    WRONG_VALUE = "wrong_value"
+    MISSING = "missing"
+
+
+class GPOFinding(BaseModel):
+    gpo_id: str
+    gpo_name: str
+    value: Any = None
+    value_display: str = ""
+    state: str = ""
+    matches: bool = False
+
+
+class BaselineViolation(BaseModel):
+    key_path: str
+    value_name: str
+    display_name: str
+    category: str
+    scope: str
+    expected_value: Any = None
+    expected_value_display: str = ""
+    expected_state: str = ""
+    setting_type: str = ""
+    status: BaselineViolationStatus
+    gpo_findings: list[GPOFinding] = Field(default_factory=list)
+
+
+class BaselineComplianceReport(BaseModel):
+    baseline_id: str
+    baseline_name: str
+    total_baseline_settings: int = 0
+    compliant_count: int = 0
+    wrong_value_count: int = 0
+    missing_count: int = 0
+    violations: list[BaselineViolation] = Field(default_factory=list)
+    compliant: list[BaselineViolation] = Field(default_factory=list)
+
+
+class BaselineStatus(BaseModel):
+    baseline_count: int = 0
+    loaded: bool = False
+    parse_errors: list[dict[str, str]] = Field(default_factory=list)

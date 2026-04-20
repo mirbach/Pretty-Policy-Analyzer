@@ -8,8 +8,9 @@ import { ConflictView } from './components/ConflictView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Toolbar } from './components/Toolbar';
 import { GlobalSearch } from './components/GlobalSearch';
+import { BaselineView } from './components/BaselineView';
 
-type View = 'detail' | 'compare' | 'conflicts' | 'search';
+type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
 
 type AiCache = Record<string, string>;
 
@@ -96,6 +97,7 @@ export default function App() {
           )}
           {currentView === 'conflicts' && <ConflictView />}
           {currentView === 'search' && <GlobalSearch />}
+          {currentView === 'baseline' && <BaselineView />}
         </main>
       </div>
     </div>
