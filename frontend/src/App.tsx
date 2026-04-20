@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStatus } from './hooks/useApi';
 import { useDarkMode } from './hooks/useDarkMode';
 import { GPOList } from './components/GPOList';
@@ -9,10 +9,22 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { Toolbar } from './components/Toolbar';
 import { GlobalSearch } from './components/GlobalSearch';
 import { BaselineView } from './components/BaselineView';
+import { initAIConfig } from './lib/aiClient';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
 
 type AiCache = Record<string, string>;
+
+const AI_CACHE_STORAGE_KEY = 'pretty_policy_analyzer_ai_cache';
+
+function loadPersistedAiCaches(): Record<string, AiCache> {
+  try {
+    const raw = localStorage.getItem(AI_CACHE_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, AiCache>) : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function App() {
   const [isDark, toggleDark] = useDarkMode();
@@ -20,7 +32,19 @@ export default function App() {
   const [selectedGpoId, setSelectedGpoId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState<View>('detail');
-  const [allAiCaches, setAllAiCaches] = useState<Record<string, AiCache>>({});
+  const [allAiCaches, setAllAiCaches] = useState<Record<string, AiCache>>(loadPersistedAiCaches);
+
+  // Load AI config once (from safeStorage in Electron, localStorage in browser)
+  useEffect(() => { void initAIConfig(); }, []);
+
+  // Persist AI cache to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(AI_CACHE_STORAGE_KEY, JSON.stringify(allAiCaches));
+    } catch {
+      // quota exceeded or private browsing — silently skip
+    }
+  }, [allAiCaches]);
 
   const getAiCacheProps = (gpoId: string) => ({
     aiCache: allAiCaches[gpoId] ?? {} as AiCache,

@@ -20,17 +20,59 @@ export const PROVIDER_MODELS: Record<AIProvider, string[]> = {
 
 const STORAGE_KEY = 'pretty_policy_analyzer_ai_config';
 
-export function loadAIConfig(): AIConfig | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AIConfig) : null;
-  } catch {
-    return null;
+// In-memory cache populated by initAIConfig() at app startup.
+// All call sites use loadAIConfig() synchronously against this cache.
+let _cachedConfig: AIConfig | null = null;
+
+type ElectronAPI = {
+  selectFolder: () => Promise<string | null>;
+  onApiPort: (cb: (port: number) => void) => void;
+  saveAIConfig: (config: { provider: string; model: string; apiKey: string }) => Promise<void>;
+  loadAIConfig: () => Promise<{ provider: string; model: string; apiKey: string } | null>;
+};
+
+function electronAPI(): ElectronAPI | undefined {
+  return (window as unknown as { __electronAPI?: ElectronAPI }).__electronAPI;
+}
+
+/**
+ * Must be called once at app startup (before any modal opens).
+ * In Electron, loads from the encrypted OS credential store.
+ * In browser, loads from localStorage.
+ */
+export async function initAIConfig(): Promise<void> {
+  const api = electronAPI();
+  if (api?.loadAIConfig) {
+    const raw = await api.loadAIConfig();
+    _cachedConfig = raw ? (raw as AIConfig) : null;
+  } else {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      _cachedConfig = raw ? (JSON.parse(raw) as AIConfig) : null;
+    } catch {
+      _cachedConfig = null;
+    }
   }
 }
 
-export function saveAIConfig(config: AIConfig): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+/** Synchronous — returns the in-memory cache populated by initAIConfig(). */
+export function loadAIConfig(): AIConfig | null {
+  return _cachedConfig;
+}
+
+/**
+ * Persists the config.
+ * In Electron: encrypts the API key with OS safeStorage, writes to userData.
+ * In browser: stores as JSON in localStorage.
+ */
+export async function saveAIConfig(config: AIConfig): Promise<void> {
+  _cachedConfig = config;
+  const api = electronAPI();
+  if (api?.saveAIConfig) {
+    await api.saveAIConfig(config);
+  } else {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  }
 }
 
 export async function callAI(prompt: string, config: AIConfig): Promise<string> {
@@ -68,11 +110,14 @@ async function callOpenAICompat(prompt: string, config: AIConfig): Promise<strin
 }
 
 async function callGemini(prompt: string, config: AIConfig): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`;
 
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': config.apiKey,
+    },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
     }),

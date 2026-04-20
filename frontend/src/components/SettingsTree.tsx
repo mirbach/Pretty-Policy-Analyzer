@@ -4,6 +4,7 @@ import { ChevronRight, ChevronDown, Sparkles } from 'lucide-react';
 import { loadAIConfig, callAI } from '../lib/aiClient';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => <h1 className="text-sm font-bold text-surface-800 dark:text-surface-200 mt-3 mb-1">{children}</h1>,
@@ -22,6 +23,16 @@ const MARKDOWN_COMPONENTS: Components = {
   pre: ({ children }) => <pre className="my-1.5">{children}</pre>,
   strong: ({ children }) => <strong className="font-semibold text-surface-800 dark:text-surface-200">{children}</strong>,
   blockquote: ({ children }) => <blockquote className="border-l-2 border-violet-400 pl-3 italic text-surface-500 dark:text-surface-400 text-xs my-1">{children}</blockquote>,
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-2">
+      <table className="w-full text-xs border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-violet-100 dark:bg-violet-900/30">{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => <tr className="border-b border-surface-200 dark:border-surface-700">{children}</tr>,
+  th: ({ children }) => <th className="text-left px-2 py-1 font-semibold text-surface-700 dark:text-surface-300">{children}</th>,
+  td: ({ children }) => <td className="px-2 py-1 text-surface-700 dark:text-surface-300 align-top">{children}</td>,
 };
 
 const TREE_INDENT = [
@@ -283,7 +294,7 @@ Be specific and practical.`;
             )}
             {aiResponse && (
               <div className="mt-2 p-3 bg-violet-50 dark:bg-violet-900/20 rounded max-h-[600px] overflow-y-auto">
-                <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                   {aiResponse}
                 </ReactMarkdown>
               </div>

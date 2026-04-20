@@ -10,4 +10,8 @@ contextBridge.exposeInMainWorld('__electronAPI', {
   onApiPort: (callback: (port: number) => void) => {
     ipcRenderer.on('api-port', (_event, port) => callback(port));
   },
+  saveAIConfig: (config: { provider: string; model: string; apiKey: string }) =>
+    ipcRenderer.invoke('ai-config-save', config),
+  loadAIConfig: (): Promise<{ provider: string; model: string; apiKey: string } | null> =>
+    ipcRenderer.invoke('ai-config-load'),
 });

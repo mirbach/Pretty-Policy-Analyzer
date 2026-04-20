@@ -29,9 +29,9 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
     if (!models.includes(model)) setModel(models[0]);
   }, [provider, model]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const config: AIConfig = { provider, apiKey: apiKey.trim(), model };
-    saveAIConfig(config);
+    await saveAIConfig(config);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

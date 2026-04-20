@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, safeStorage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { startSidecar, stopSidecar, getSidecarPort } from './sidecar';
@@ -99,4 +99,32 @@ ipcMain.handle('select-folder', async () => {
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths[0];
+});
+
+// IPC: save AI config — API key is encrypted with OS credential store via safeStorage
+const AI_CONFIG_PATH = path.join(app.getPath('userData'), 'ai-config.json');
+
+ipcMain.handle('ai-config-save', (_event, config: { provider: string; model: string; apiKey: string }) => {
+  const canEncrypt = safeStorage.isEncryptionAvailable();
+  const encryptedKey = canEncrypt
+    ? safeStorage.encryptString(config.apiKey).toString('base64')
+    : Buffer.from(config.apiKey).toString('base64');
+  const stored = { provider: config.provider, model: config.model, encryptedKey, encrypted: canEncrypt };
+  fs.writeFileSync(AI_CONFIG_PATH, JSON.stringify(stored), 'utf-8');
+});
+
+ipcMain.handle('ai-config-load', (): { provider: string; model: string; apiKey: string } | null => {
+  if (!fs.existsSync(AI_CONFIG_PATH)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(AI_CONFIG_PATH, 'utf-8')) as {
+      provider: string; model: string; encryptedKey: string; encrypted: boolean;
+    };
+    const apiKey = (raw.encrypted && safeStorage.isEncryptionAvailable())
+      ? safeStorage.decryptString(Buffer.from(raw.encryptedKey, 'base64'))
+      : Buffer.from(raw.encryptedKey, 'base64').toString('utf-8');
+    return { provider: raw.provider, model: raw.model, apiKey };
+  } catch (err) {
+    log(`Failed to load AI config: ${err}`);
+    return null;
+  }
 });
