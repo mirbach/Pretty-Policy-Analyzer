@@ -55,8 +55,8 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
 
   const filterOptions: { value: DiffFilter; label: string; count: number }[] = [
     { value: 'all', label: 'All', count: result.total_unique_settings },
-    { value: 'only_in_one', label: 'Unique', count: result.differences.filter((d) => d.diff_type === 'only_in_one').length },
-    { value: 'different_values', label: 'Different', count: result.differences.filter((d) => d.diff_type === 'different_values').length },
+    { value: 'only_in_one', label: 'Only in one GPO', count: result.differences.filter((d) => d.diff_type === 'only_in_one').length },
+    { value: 'different_values', label: 'Differ', count: result.differences.filter((d) => d.diff_type === 'different_values').length },
     { value: 'identical', label: 'Identical', count: result.identical_count },
   ];
 

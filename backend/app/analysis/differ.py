@@ -39,12 +39,13 @@ def compare_gpos(gpos: list[GPODetail]) -> ComparisonResult:
             states[gid] = setting.state.value
 
         # Determine diff type
-        present_in_all = len(gpo_map) == len(gpos)
+        present_count = len(gpo_map)
 
-        if not present_in_all:
+        if present_count == 1:
+            # Only in a single GPO — no overlap at all
             diff_type = "only_in_one"
         else:
-            # Check if all values are the same
+            # Appears in 2+ GPOs — check if values match
             value_list = list(values.values())
             all_same = all(_values_equal(value_list[0], v) for v in value_list[1:])
             state_list = list(states.values())
