@@ -10,7 +10,11 @@ venv/
 
 # Node
 node_modules/
-dist/
+frontend/dist/
+
+# PyInstaller output
+backend/build/
+backend/dist/
 
 # IDE
 .vscode/
@@ -22,3 +26,7 @@ Thumbs.db
 
 # Config
 .env
+
+#electron dist
+dist-electron/
+release/

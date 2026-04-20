@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  base: './',  // relative paths so Electron can load via file://
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

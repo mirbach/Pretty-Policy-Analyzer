@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -13,7 +14,13 @@ from ..store import get_store
 
 router = APIRouter(prefix="/api/baselines", tags=["baselines"])
 
-BUNDLED_BASELINES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "SecurityBaselines"
+# In Electron (dev + packaged) the sidecar passes this env var.
+# Fall back to the repo-relative path for plain `uvicorn` development.
+_env_dir = os.environ.get("SECURITY_BASELINES_DIR")
+if _env_dir:
+    BUNDLED_BASELINES_DIR = Path(_env_dir)
+else:
+    BUNDLED_BASELINES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "SecurityBaselines"
 
 
 @router.get("/bundled", response_model=list[BundledBaseline])

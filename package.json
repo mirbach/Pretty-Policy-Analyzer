@@ -7,17 +7,18 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev:backend": "cd backend && python3.13 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "dev:electron": "tsc -p electron/tsconfig.json && electron dist-electron/main.js",
     "dev": "concurrently -n fe,be -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
     "build:frontend": "cd frontend && npm run build",
     "build:electron": "tsc -p electron/tsconfig.json",
-    "build:backend": "cd backend && pyinstaller --noconfirm --onedir --name gpo-backend app/main.py",
+    "build:backend": "cd backend && python3.13 -m PyInstaller --noconfirm gpo-backend.spec",
     "build": "npm run build:frontend && npm run build:electron && npm run build:backend",
-    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
     "postinstall": "cd frontend && npm install"
   },
   "devDependencies": {
+    "@electron/packager": "^19.1.0",
     "@types/node": "^20.11.0",
     "concurrently": "^9.1.0",
     "electron": "^33.2.0",
@@ -38,16 +39,24 @@
       {
         "from": "backend/dist/gpo-backend",
         "to": "backend",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "SecurityBaselines",
+        "to": "SecurityBaselines",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "forceCodeSigning": false
     },
     "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns"
+      "target": "dmg"
     },
     "linux": {
       "target": "AppImage"

@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as net from 'net';
+import * as fs from 'fs';
 import { app } from 'electron';
 
 let sidecarProcess: ChildProcess | null = null;
@@ -43,20 +44,32 @@ export async function startSidecar(): Promise<void> {
 
   let execPath: string;
   let args: string[];
+  let spawnEnv: NodeJS.ProcessEnv;
 
   if (isDev) {
     // In development, run Python directly
-    execPath = 'python';
+    const backendDir = path.join(__dirname, '..', 'backend');
+    const repoRoot = path.join(__dirname, '..');
+    execPath = 'python3.13';
     args = ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', String(sidecarPort)];
+    spawnEnv = {
+      ...process.env,
+      PYTHONPATH: backendDir,
+      SECURITY_BASELINES_DIR: path.join(repoRoot, 'SecurityBaselines'),
+    };
   } else {
     // In production, run the bundled executable
-    const resourcesPath = path.join(process.resourcesPath, 'backend');
+    const resourcesPath = process.resourcesPath;
     if (process.platform === 'win32') {
-      execPath = path.join(resourcesPath, 'gpo-backend.exe');
+      execPath = path.join(resourcesPath, 'gpo-backend', 'gpo-backend.exe');
     } else {
-      execPath = path.join(resourcesPath, 'gpo-backend');
+      execPath = path.join(resourcesPath, 'gpo-backend', 'gpo-backend');
     }
     args = ['--port', String(sidecarPort), '--host', '127.0.0.1'];
+    spawnEnv = {
+      ...process.env,
+      SECURITY_BASELINES_DIR: path.join(resourcesPath, 'SecurityBaselines'),
+    };
   }
 
   console.log(`Starting sidecar: ${execPath} ${args.join(' ')}`);
@@ -64,7 +77,7 @@ export async function startSidecar(): Promise<void> {
   sidecarProcess = spawn(execPath, args, {
     cwd: isDev ? path.join(__dirname, '..', 'backend') : undefined,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env },
+    env: spawnEnv,
   });
 
   sidecarProcess.stdout?.on('data', (data) => {

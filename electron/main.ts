@@ -1,6 +1,15 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { startSidecar, stopSidecar, getSidecarPort } from './sidecar';
+
+// Log to a file so we can diagnose packaged-app issues
+const logFile = path.join(app.getPath('userData'), 'app.log');
+function log(msg: string) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  console.log(line.trimEnd());
+  try { fs.appendFileSync(logFile, line); } catch { /* ignore */ }
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -24,7 +33,9 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'), {
+      query: { port: String(getSidecarPort()) },
+    });
   }
 
   mainWindow.on('closed', () => {
@@ -33,13 +44,22 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // Start Python sidecar
-  await startSidecar();
+  Menu.setApplicationMenu(null);
+  log('app ready');
+  // Start Python sidecar — create the window regardless so errors are visible
+  try {
+    await startSidecar();
+    log('sidecar started');
+  } catch (err) {
+    log(`Failed to start backend sidecar: ${err}`);
+  }
 
   createWindow();
+  log('window created');
 
-  // Pass the API port to the renderer once it's ready
+  // Port is already passed via query string; IPC is a belt-and-suspenders fallback
   mainWindow!.webContents.on('did-finish-load', () => {
+    log('renderer did-finish-load, sending api-port');
     mainWindow!.webContents.send('api-port', getSidecarPort());
   });
 });
