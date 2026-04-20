@@ -4,6 +4,7 @@ import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
 import { exportSelectedGPOs } from '../lib/exportExcel';
 import { AISettingsModal } from './AISettingsModal';
+import logo from '../assets/PPALogo.jpg';
 import {
   LayoutDashboard,
   GitCompare,
@@ -121,6 +122,7 @@ export function Toolbar({
 
   return (
     <header className="bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-700 px-4 py-2 flex items-center gap-4 shrink-0">
+      <img src={logo} alt="Pretty Policy Analyzer" className="h-8 w-auto" />
       <h1 className="font-bold text-lg text-surface-800 dark:text-surface-200 mr-2">
         Pretty Policy Analyzer
       </h1>

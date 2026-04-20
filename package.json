@@ -14,7 +14,7 @@
     "build:electron": "tsc -p electron/tsconfig.json",
     "build:backend": "cd backend && python3.13 -m PyInstaller --noconfirm gpo-backend.spec",
     "build": "npm run build:frontend && npm run build:electron && npm run build:backend",
-    "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
+    "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --icon=electron/icon.ico --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
     "postinstall": "cd frontend && npm install"
   },
   "devDependencies": {

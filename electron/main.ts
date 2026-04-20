@@ -14,6 +14,7 @@ function log(msg: string) {
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = !app.isPackaged;
+const appIconPath = path.join(__dirname, '..', 'electron', 'icon.ico');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -22,6 +23,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'Pretty Policy Analyzer',
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
