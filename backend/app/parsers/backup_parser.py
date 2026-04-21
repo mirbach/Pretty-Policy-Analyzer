@@ -27,12 +27,12 @@ def parse_bkupinfo(folder_path: str) -> GPOInfo | None:
     except ValueError:
         return None
     bkup_path = os.path.join(safe_folder, "bkupInfo.xml")
-    if not os.path.isfile(bkup_path):  # lgtm[py/path-injection]
+    if not os.path.isfile(bkup_path):
         return None
 
     # Use a safe parser to prevent XXE attacks
     _safe_parser = etree.XMLParser(resolve_entities=False, no_network=True)
-    tree = etree.parse(bkup_path, _safe_parser)  # lgtm[py/path-injection]
+    tree = etree.parse(bkup_path, _safe_parser)
     root = tree.getroot()
     ns = {"m": MANIFEST_NS}
 

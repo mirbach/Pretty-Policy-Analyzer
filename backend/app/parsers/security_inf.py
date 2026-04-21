@@ -22,7 +22,7 @@ SECTION_TYPE_MAP = {
 def parse_security_inf(file_path: str) -> tuple[list[PolicySetting], list[str]]:
     """Parse a GptTmpl.inf file and return list of settings + warnings."""
     file_path = safe_resolve_file(file_path)
-    if not os.path.isfile(file_path):  # lgtm[py/path-injection]
+    if not os.path.isfile(file_path):
         return [], []
 
     warnings: list[str] = []
@@ -31,7 +31,7 @@ def parse_security_inf(file_path: str) -> tuple[list[PolicySetting], list[str]]:
     content = None
     for encoding in ("utf-16", "utf-16-le", "utf-8-sig", "utf-8", "latin-1"):
         try:
-            with open(file_path, "r", encoding=encoding) as f:  # lgtm[py/path-injection]
+            with open(file_path, "r", encoding=encoding) as f:
                 content = f.read()
             break
         except (UnicodeDecodeError, UnicodeError):

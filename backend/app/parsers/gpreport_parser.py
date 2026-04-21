@@ -179,7 +179,7 @@ def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting
     except ValueError:
         return None, [], [f"Invalid folder path: {folder_path!r}"]
     gpreport_path = os.path.join(safe_folder, "gpreport.xml")
-    if not os.path.isfile(gpreport_path):  # lgtm[py/path-injection]
+    if not os.path.isfile(gpreport_path):
         return None, [], ["gpreport.xml not found"]
 
     warnings: list[str] = []
@@ -187,7 +187,7 @@ def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting
     # gpreport.xml is sometimes UTF-16 LE (with BOM) and sometimes UTF-8
     # but still carries an encoding="utf-16" declaration. Read as bytes,
     # decode correctly, then normalise the declaration before handing to lxml.
-    with open(gpreport_path, "rb") as f:  # lgtm[py/path-injection]
+    with open(gpreport_path, "rb") as f:
         raw = f.read()
 
     if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
