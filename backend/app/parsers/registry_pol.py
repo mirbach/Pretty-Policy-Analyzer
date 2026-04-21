@@ -7,6 +7,7 @@ import struct
 from typing import Any
 
 from ..models import PolicyScope, PolicySetting, SettingState, SettingType
+from ._path_utils import safe_resolve_file
 
 # Registry value types
 REG_NONE = 0
@@ -66,7 +67,7 @@ def _decode_value(reg_type: int, data: bytes) -> Any:
 
 def parse_registry_pol(file_path: str, scope: PolicyScope) -> tuple[list[PolicySetting], list[str]]:
     """Parse a registry.pol file and return list of settings + warnings."""
-    file_path = os.path.realpath(file_path)
+    file_path = safe_resolve_file(file_path)
     if not os.path.isfile(file_path):
         return [], []
 

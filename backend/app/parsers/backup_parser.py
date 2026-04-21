@@ -8,6 +8,7 @@ from typing import Optional
 from lxml import etree
 
 from ..models import GPOInfo
+from ._path_utils import safe_resolve_dir
 
 MANIFEST_NS = "http://www.microsoft.com/GroupPolicy/GPOOperations/Manifest"
 OPERATIONS_NS = "http://www.microsoft.com/GroupPolicy/GPOOperations"
@@ -21,7 +22,10 @@ def _text(el: Optional[etree._Element]) -> str:
 
 def parse_bkupinfo(folder_path: str) -> GPOInfo | None:
     """Parse bkupInfo.xml to extract GPO metadata."""
-    safe_folder = os.path.realpath(folder_path)
+    try:
+        safe_folder = safe_resolve_dir(folder_path)
+    except ValueError:
+        return None
     bkup_path = os.path.join(safe_folder, "bkupInfo.xml")
     if not os.path.isfile(bkup_path):
         return None
@@ -32,7 +36,7 @@ def parse_bkupinfo(folder_path: str) -> GPOInfo | None:
     root = tree.getroot()
     ns = {"m": MANIFEST_NS}
 
-    backup_id = os.path.basename(folder_path.rstrip("/\\"))
+    backup_id = os.path.basename(safe_folder)
 
     return GPOInfo(
         id=backup_id,

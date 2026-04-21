@@ -6,6 +6,7 @@ import os
 import re
 
 from ..models import GPODetail, GPOInfo, PolicyScope, PolicySetting, SettingType
+from ._path_utils import safe_resolve_dir
 from .backup_parser import parse_bkupinfo
 from .gpreport_parser import parse_gpreport
 from .registry_pol import parse_registry_pol
@@ -14,12 +15,18 @@ from .security_inf import parse_security_inf
 GUID_PATTERN = re.compile(r"^\{[0-9a-fA-F\-]{36}\}$")
 
 
+def _safe_resolve(candidate: str, trusted_root: str | None = None) -> str:
+    """Thin wrapper kept for backward compatibility; delegates to safe_resolve_dir."""
+    return safe_resolve_dir(candidate, trusted_root)
+
+
 def is_gpo_folder(path: str) -> bool:
     """Check if a directory looks like a GPO backup folder."""
-    path = os.path.realpath(path)
-    if not os.path.isdir(path):
+    try:
+        path = _safe_resolve(path)
+    except ValueError:
         return False
-    dirname = os.path.basename(path.rstrip("/\\"))
+    dirname = os.path.basename(path)
     if not GUID_PATTERN.match(dirname):
         return False
     # Must have at least bkupInfo.xml or gpreport.xml
@@ -31,7 +38,7 @@ def is_gpo_folder(path: str) -> bool:
 
 def parse_gpo_folder(folder_path: str) -> GPODetail:
     """Parse a single GPO backup folder and return structured data."""
-    folder_path = os.path.realpath(folder_path)
+    folder_path = _safe_resolve(folder_path)
     warnings: list[str] = []
     all_settings: list[PolicySetting] = []
 
@@ -118,17 +125,18 @@ def parse_gpo_folder(folder_path: str) -> GPODetail:
 
 def scan_gpo_folder(root_path: str) -> tuple[list[GPODetail], list[dict[str, str]]]:
     """Scan a directory for GPO backup folders and parse them all."""
-    root_path = os.path.realpath(root_path)
-    if not os.path.isdir(root_path):
+    try:
+        root_path = _safe_resolve(root_path)
+    except ValueError:
         return [], [{"folder": root_path, "error": "Directory does not exist"}]
 
     gpos: list[GPODetail] = []
     errors: list[dict[str, str]] = []
 
     for entry in sorted(os.listdir(root_path)):
-        sub_path = os.path.realpath(os.path.join(root_path, entry))
-        # Ensure each sub-path stays within the root (guards against symlink escapes)
-        if not sub_path.startswith(root_path + os.sep) and sub_path != root_path:
+        try:
+            sub_path = _safe_resolve(os.path.join(root_path, entry), trusted_root=root_path)
+        except ValueError:
             continue
         if not is_gpo_folder(sub_path):
             continue

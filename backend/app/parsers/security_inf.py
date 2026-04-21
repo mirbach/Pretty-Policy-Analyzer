@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from ..models import PolicyScope, PolicySetting, SettingState, SettingType
+from ._path_utils import safe_resolve_file
 
 # Section name -> SettingType mapping
 SECTION_TYPE_MAP = {
@@ -20,7 +21,7 @@ SECTION_TYPE_MAP = {
 
 def parse_security_inf(file_path: str) -> tuple[list[PolicySetting], list[str]]:
     """Parse a GptTmpl.inf file and return list of settings + warnings."""
-    file_path = os.path.realpath(file_path)
+    file_path = safe_resolve_file(file_path)
     if not os.path.isfile(file_path):
         return [], []
 

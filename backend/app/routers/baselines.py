@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..analysis.baseline_checker import check_compliance
 from ..models import BaselineComplianceReport, BaselineStatus, BundledBaseline, GPOInfo, ScanRequest, UploadedFileItem
+from ..parsers._path_utils import safe_resolve_dir
 from ..store import get_store
 
 router = APIRouter(prefix="/api/baselines", tags=["baselines"])
@@ -42,21 +43,20 @@ def list_bundled_baselines():
 @router.post("/bundled/{os_name}", response_model=BaselineStatus)
 def load_bundled_baseline(os_name: str):
     """Load a shipped baseline by OS folder name, replacing any current baselines."""
-    # Prevent path traversal
+    # Prevent path traversal: name must be a single component and resolve within the baselines dir
     parts = Path(os_name).parts
     if len(parts) != 1 or parts[0] in ('..', '.'):
         raise HTTPException(status_code=400, detail="Invalid baseline name")
-    target = BUNDLED_BASELINES_DIR / os_name
-    # Resolve symlinks and verify the target stays within the baselines directory
-    safe_root = BUNDLED_BASELINES_DIR.resolve()
-    safe_target = target.resolve()
-    if not str(safe_target).startswith(str(safe_root) + os.sep) and safe_target != safe_root:
-        raise HTTPException(status_code=400, detail="Invalid baseline name")
-    if not safe_target.is_dir():
+    try:
+        safe_target = safe_resolve_dir(
+            str(BUNDLED_BASELINES_DIR / os_name),
+            trusted_root=str(BUNDLED_BASELINES_DIR),
+        )
+    except ValueError:
         raise HTTPException(status_code=404, detail=f"Bundled baseline '{os_name}' not found")
     store = get_store()
     store.clear_baselines()
-    return store.scan_baselines(str(safe_target))
+    return store.scan_baselines(safe_target)
 
 
 @router.get("", response_model=list[GPOInfo])

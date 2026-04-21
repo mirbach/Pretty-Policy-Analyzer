@@ -9,6 +9,7 @@ from typing import Optional
 from lxml import etree
 
 from ..models import GPOInfo, PolicyScope, PolicySetting, SettingState, SettingType
+from ._path_utils import safe_resolve_dir
 
 GPO_NS = "http://www.microsoft.com/GroupPolicy/Settings"
 TYPES_NS = "http://www.microsoft.com/GroupPolicy/Types"
@@ -173,7 +174,10 @@ def _parse_security_settings(extension: etree._Element, scope: PolicyScope) -> l
 
 def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting], list[str]]:
     """Parse gpreport.xml and return (GPOInfo, list of settings, warnings)."""
-    safe_folder = os.path.realpath(folder_path)
+    try:
+        safe_folder = safe_resolve_dir(folder_path)
+    except ValueError:
+        return None, [], [f"Invalid folder path: {folder_path!r}"]
     gpreport_path = os.path.join(safe_folder, "gpreport.xml")
     if not os.path.isfile(gpreport_path):
         return None, [], ["gpreport.xml not found"]
