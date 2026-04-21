@@ -55,6 +55,11 @@ export async function scanUpload(files: UploadedFileItem[]): Promise<ScanStatus>
   return data;
 }
 
+export async function importLocalPolicy(): Promise<ScanStatus> {
+  const { data } = await api.post('/api/import-local-policy');
+  return data;
+}
+
 export async function listGPOs(search?: string): Promise<GPOInfo[]> {
   const { data } = await api.get('/api/gpos', { params: { search } });
   return data;

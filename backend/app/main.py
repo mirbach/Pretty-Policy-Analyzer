@@ -12,9 +12,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from fastapi import HTTPException
 from .models import ScanRequest, ScanStatus, UploadedFileItem
 from .routers import compare, conflicts, gpos, baselines
 from .store import get_store
+from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
 
 app = FastAPI(
     title="Pretty Policy Analyzer",
@@ -70,6 +72,25 @@ async def scan_upload(files: list[UploadedFileItem]):
 def clear_data():
     """Clear all loaded GPO data and return to empty state."""
     return get_store().clear()
+
+
+@app.post("/api/import-local-policy", response_model=ScanStatus)
+def import_local_policy():
+    """Run gpresult /X and import the effective policy of this machine."""
+    import os
+    xml_path: str | None = None
+    try:
+        xml_path = run_gpresult(scope="both")
+        gpo, _warnings = parse_gpresult_xml(xml_path)
+        return get_store().add_or_replace_gpo(gpo)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if xml_path and os.path.isfile(xml_path):
+            try:
+                os.unlink(xml_path)
+            except OSError:
+                pass
 
 
 @app.get("/api/health")

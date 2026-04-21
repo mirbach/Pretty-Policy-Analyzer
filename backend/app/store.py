@@ -53,6 +53,12 @@ class GPOStore:
     def get_gpo(self, gpo_id: str) -> Optional[GPODetail]:
         return self._gpos.get(gpo_id)
 
+    def add_or_replace_gpo(self, gpo: GPODetail) -> ScanStatus:
+        """Add or replace a single GPO without clearing the rest."""
+        categorize_settings(gpo.settings)
+        self._gpos[gpo.info.id] = gpo
+        return self.get_status()
+
     def clear(self) -> ScanStatus:
         """Clear all loaded GPO data."""
         import shutil

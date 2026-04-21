@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useScanFolder, useScanUpload, useClear } from '../hooks/useApi';
+import { useScanFolder, useScanUpload, useClear, useImportLocalPolicy } from '../hooks/useApi';
 import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
 import { exportSelectedGPOs } from '../lib/exportExcel';
@@ -18,6 +18,7 @@ import {
   FileDown,
   Settings,
   ShieldCheck,
+  Monitor,
 } from 'lucide-react';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
@@ -72,11 +73,13 @@ export function Toolbar({
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showAISettings, setShowAISettings] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
   const clearMutation = useClear();
+  const importLocalMutation = useImportLocalPolicy();
 
-  const isPending = scanMutation.isPending || uploadMutation.isPending;
+  const isPending = scanMutation.isPending || uploadMutation.isPending || importLocalMutation.isPending;
 
   const handleRescan = () => {
     if (status.folder_path) {
@@ -222,6 +225,26 @@ export function Toolbar({
             <button onClick={handleChangeFolder} disabled={isPending} className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded" title="Change folder">
               <FolderOpen size={14} />
             </button>
+            <button
+              onClick={() => {
+                setImportError(null);
+                importLocalMutation.mutate(undefined, {
+                  onError: (err: any) => {
+                    setImportError(err?.response?.data?.detail ?? err?.message ?? 'Import failed');
+                  },
+                });
+              }}
+              disabled={isPending}
+              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+              title="Import effective policy from this machine (runs gpresult)"
+            >
+              <Monitor size={14} />
+            </button>
+            {importError && (
+              <span className="text-xs text-red-500 max-w-[160px] truncate" title={importError}>
+                {importError}
+              </span>
+            )}
             <button
               onClick={() => clearMutation.mutate()}
               disabled={clearMutation.isPending}

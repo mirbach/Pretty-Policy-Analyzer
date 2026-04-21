@@ -42,6 +42,17 @@ export function useScanUpload() {
   });
 }
 
+export function useImportLocalPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.importLocalPolicy(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['status'] });
+      qc.invalidateQueries({ queryKey: ['gpos'] });
+    },
+  });
+}
+
 export function useGPOs(search?: string) {
   return useQuery({
     queryKey: ['gpos', search],
