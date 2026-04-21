@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from fastapi import HTTPException
 from .models import ScanRequest, ScanStatus, UploadedFileItem
+from .parsers._path_utils import safe_resolve_dir
 from .routers import compare, conflicts, gpos, baselines
 from .store import get_store
 from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
@@ -45,7 +46,11 @@ def get_status():
 
 @app.post("/api/scan", response_model=ScanStatus)
 def scan_folder(request: ScanRequest):
-    return get_store().scan(request.folder_path)
+    try:
+        safe_path = safe_resolve_dir(request.folder_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return get_store().scan(safe_path)
 
 
 @app.post("/api/scan-upload", response_model=ScanStatus)

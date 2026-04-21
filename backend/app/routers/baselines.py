@@ -68,7 +68,11 @@ def list_baselines():
 def scan_baselines(request: ScanRequest):
     if not request.folder_path:
         raise HTTPException(status_code=400, detail="folder_path required")
-    return get_store().scan_baselines(request.folder_path)
+    try:
+        safe_path = safe_resolve_dir(request.folder_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return get_store().scan_baselines(safe_path)
 
 
 @router.post("/upload", response_model=BaselineStatus)
