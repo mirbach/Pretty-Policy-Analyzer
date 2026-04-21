@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useCompare } from '../hooks/useApi';
 import type { DiffEntry } from '../types/gpo';
 import { Filter, ArrowLeftRight } from 'lucide-react';
@@ -13,6 +13,50 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
   const { data: result, isLoading, error } = useCompare(gpoIds);
   const [filter, setFilter] = useState<DiffFilter>('all');
   const [search, setSearch] = useState('');
+
+  // Column widths: [scope, setting, type, ...gpoIds]
+  const defaultWidths = useCallback(
+    () => [50, 300, 100, ...gpoIds.map(() => 180)],
+    [gpoIds]
+  );
+  const [colWidths, setColWidths] = useState<number[]>(defaultWidths);
+  const prevGpoCount = useRef(gpoIds.length);
+  useEffect(() => {
+    if (gpoIds.length !== prevGpoCount.current) {
+      prevGpoCount.current = gpoIds.length;
+      setColWidths(defaultWidths());
+    }
+  }, [gpoIds.length, defaultWidths]);
+
+  const dragState = useRef<{ colIndex: number; startX: number; startWidth: number } | null>(null);
+
+  const onResizeMouseDown = useCallback(
+    (colIndex: number, e: React.MouseEvent) => {
+      e.preventDefault();
+      dragState.current = { colIndex, startX: e.clientX, startWidth: colWidths[colIndex] };
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!dragState.current) return;
+        const delta = ev.clientX - dragState.current.startX;
+        const newWidth = Math.max(40, dragState.current.startWidth + delta);
+        setColWidths((prev) => {
+          const next = [...prev];
+          next[dragState.current!.colIndex] = newWidth;
+          return next;
+        });
+      };
+
+      const onMouseUp = () => {
+        dragState.current = null;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [colWidths]
+  );
 
   const entries = useMemo(() => {
     if (!result) return [];
@@ -107,17 +151,37 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
 
       {/* Comparison table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="text-sm table-fixed" style={{ width: colWidths.reduce((a, b) => a + b, 0) }}>
+          <colgroup>
+            {colWidths.map((w, i) => (
+              <col key={i} style={{ width: w }} />
+            ))}
+          </colgroup>
           <thead className="sticky top-0 bg-surface-100 dark:bg-surface-800 z-10">
             <tr>
-              <th className="text-left p-2 font-medium text-surface-600 dark:text-surface-400 w-8">Scope</th>
-              <th className="text-left p-2 font-medium text-surface-600 dark:text-surface-400">Setting</th>
-              <th className="text-left p-2 font-medium text-surface-600 dark:text-surface-400 w-20">Type</th>
-              {gpoIds.map((id) => (
-                <th key={id} className="text-left p-2 font-medium text-surface-600 dark:text-surface-400 min-w-[150px]">
-                  <span className="truncate block" title={result.gpo_names[id]}>
-                    {result.gpo_names[id]}
+              {[
+                { label: 'Scope' },
+                { label: 'Setting' },
+                { label: 'Type' },
+                ...gpoIds.map((id) => ({ label: result.gpo_names[id], id })),
+              ].map((col, i) => (
+                <th
+                  key={i}
+                  className="text-left p-2 font-medium text-surface-600 dark:text-surface-400 relative select-none overflow-hidden"
+                  style={{ width: colWidths[i] }}
+                >
+                  <span className="truncate block pr-2">
+                    {'id' in col ? (
+                      <span title={col.label}>{col.label}</span>
+                    ) : (
+                      col.label
+                    )}
                   </span>
+                  {/* Resize handle */}
+                  <div
+                    className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-400/60 active:bg-blue-500/80 transition-colors"
+                    onMouseDown={(e) => onResizeMouseDown(i, e)}
+                  />
                 </th>
               ))}
             </tr>
