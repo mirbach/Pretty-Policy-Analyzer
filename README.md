@@ -38,7 +38,18 @@ The **Baseline** view compares all loaded GPOs against one or more Microsoft Sec
   - **Missing** — no GPO configures this setting at all
 - Filter results by status (All / Missing / Wrong Value / Compliant) and free-text search by name.
 - Expand any row to see the exact expected value vs. what each GPO currently sets.
-- Bundled baselines for **Windows 11 v25H2** and **Windows Server 2025** are included in the app.
+- Bundled baselines included in the app:
+  - Windows 10 1607 and Windows Server 2016 Security Baseline
+  - Windows 10 Version 1809 and Windows Server 2019 Security Baseline
+  - Windows 10 20H2 / Windows Server 20H2 Security Baseline
+  - Windows 10 version 22H2 Security Baseline
+  - Windows 11 v23H2 Security Baseline
+  - Windows 11 v24H2 Security Baseline
+  - Windows 11 v25H2 Security Baseline
+  - Windows Server 2022 Security Baseline
+  - Windows Server 2025 Security Baseline (2602)
+  - Microsoft 365 Apps for Enterprise 2512
+  - Microsoft Edge v139 Security Baseline
 
 ### Export to Excel
 Select GPOs for comparison, then use the **Export** button to download a formatted Excel spreadsheet (`.xlsx`) with all selected GPO settings for offline review or compliance evidence collection.
@@ -165,7 +176,7 @@ Output: `release/Pretty Policy Analyzer Setup <version>.exe`
 The installer:
 - Lets the user choose an installation directory (not a one-click install).
 - Bundles the self-contained Python backend binary — no Python runtime required on the target machine.
-- Bundles the bundled security baselines (Windows 11 v25H2, Windows Server 2025).
+- Bundles all security baselines (Windows 10/11, Windows Server 2016–2025, Microsoft 365 Apps for Enterprise 2512, Microsoft Edge v139).
 - Signs nothing by default (`CSC_IDENTITY_AUTO_DISCOVERY=false`) — add a code-signing certificate to remove the SmartScreen warning.
 
 > **Note:** Code signing is disabled by default. To sign the installer, remove `set CSC_IDENTITY_AUTO_DISCOVERY=false&&` from the `installer:win` script and configure a valid certificate via the `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD` environment variables.
