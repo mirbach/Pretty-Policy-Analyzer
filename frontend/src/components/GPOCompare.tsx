@@ -9,6 +9,18 @@ interface GPOCompareProps {
 
 type DiffFilter = 'all' | 'only_in_one' | 'different_values' | 'identical';
 
+function measureTextWidth(text: string): number {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 180;
+    ctx.font = '500 14px ui-sans-serif, system-ui, -apple-system, sans-serif';
+    return Math.ceil(ctx.measureText(text).width) + 32;
+  } catch {
+    return 180;
+  }
+}
+
 export function GPOCompare({ gpoIds }: GPOCompareProps) {
   const { data: result, isLoading, error } = useCompare(gpoIds);
   const [filter, setFilter] = useState<DiffFilter>('all');
@@ -27,6 +39,20 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
       setColWidths(defaultWidths());
     }
   }, [gpoIds.length, defaultWidths]);
+
+  // Once GPO names are available, resize GPO columns to fit their header text
+  useEffect(() => {
+    if (!result) return;
+    setColWidths((prev) => {
+      const next = [...prev];
+      while (next.length < 3 + gpoIds.length) next.push(180);
+      gpoIds.forEach((id, i) => {
+        const name = result.gpo_names[id] ?? id;
+        next[3 + i] = measureTextWidth(name);
+      });
+      return next;
+    });
+  }, [result, gpoIds]);
 
   const dragState = useRef<{ colIndex: number; startX: number; startWidth: number } | null>(null);
 
@@ -230,12 +256,12 @@ function CompareRow({ entry, gpoIds }: { entry: DiffEntry; gpoIds: string[] }) {
           {entry.scope === 'Computer' ? 'C' : 'U'}
         </span>
       </td>
-      <td className="p-2">
-        <div className="font-medium text-surface-800 dark:text-surface-200 truncate max-w-xs">
+      <td className="p-2 overflow-hidden">
+        <div className="font-medium text-surface-800 dark:text-surface-200 truncate" title={entry.display_name || entry.value_name}>
           {entry.display_name || entry.value_name}
         </div>
         {expanded && (
-          <div className="text-xs text-surface-400 font-mono mt-1">
+          <div className="text-xs text-surface-400 font-mono mt-1 break-all">
             {entry.key_path}
           </div>
         )}
@@ -252,7 +278,7 @@ function CompareRow({ entry, gpoIds }: { entry: DiffEntry; gpoIds: string[] }) {
                 <span className={`text-xs ${state === 'Enabled' ? 'text-green-600 dark:text-green-400' : state === 'Disabled' ? 'text-red-500 dark:text-red-400' : 'text-surface-400'}`}>
                   {state}
                 </span>
-                <div className="text-xs text-surface-600 dark:text-surface-400 font-mono truncate max-w-[200px]" title={String(val)}>
+                <div className="text-xs text-surface-600 dark:text-surface-400 font-mono truncate" title={String(val)}>
                   {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                 </div>
               </div>
