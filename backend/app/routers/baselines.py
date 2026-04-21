@@ -52,11 +52,11 @@ def load_bundled_baseline(os_name: str):
     safe_target = target.resolve()
     if not str(safe_target).startswith(str(safe_root) + os.sep) and safe_target != safe_root:
         raise HTTPException(status_code=400, detail="Invalid baseline name")
-    if not target.is_dir():
+    if not safe_target.is_dir():
         raise HTTPException(status_code=404, detail=f"Bundled baseline '{os_name}' not found")
     store = get_store()
     store.clear_baselines()
-    return store.scan_baselines(str(target))
+    return store.scan_baselines(str(safe_target))
 
 
 @router.get("", response_model=list[GPOInfo])
