@@ -173,7 +173,8 @@ def _parse_security_settings(extension: etree._Element, scope: PolicyScope) -> l
 
 def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting], list[str]]:
     """Parse gpreport.xml and return (GPOInfo, list of settings, warnings)."""
-    gpreport_path = os.path.join(folder_path, "gpreport.xml")
+    safe_folder = os.path.realpath(folder_path)
+    gpreport_path = os.path.join(safe_folder, "gpreport.xml")
     if not os.path.isfile(gpreport_path):
         return None, [], ["gpreport.xml not found"]
 

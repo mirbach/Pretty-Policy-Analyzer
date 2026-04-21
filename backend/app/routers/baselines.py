@@ -47,6 +47,11 @@ def load_bundled_baseline(os_name: str):
     if len(parts) != 1 or parts[0] in ('..', '.'):
         raise HTTPException(status_code=400, detail="Invalid baseline name")
     target = BUNDLED_BASELINES_DIR / os_name
+    # Resolve symlinks and verify the target stays within the baselines directory
+    safe_root = BUNDLED_BASELINES_DIR.resolve()
+    safe_target = target.resolve()
+    if not str(safe_target).startswith(str(safe_root) + os.sep) and safe_target != safe_root:
+        raise HTTPException(status_code=400, detail="Invalid baseline name")
     if not target.is_dir():
         raise HTTPException(status_code=404, detail=f"Bundled baseline '{os_name}' not found")
     store = get_store()

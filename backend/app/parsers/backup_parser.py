@@ -21,11 +21,14 @@ def _text(el: Optional[etree._Element]) -> str:
 
 def parse_bkupinfo(folder_path: str) -> GPOInfo | None:
     """Parse bkupInfo.xml to extract GPO metadata."""
-    bkup_path = os.path.join(folder_path, "bkupInfo.xml")
+    safe_folder = os.path.realpath(folder_path)
+    bkup_path = os.path.join(safe_folder, "bkupInfo.xml")
     if not os.path.isfile(bkup_path):
         return None
 
-    tree = etree.parse(bkup_path)
+    # Use a safe parser to prevent XXE attacks
+    _safe_parser = etree.XMLParser(resolve_entities=False, no_network=True)
+    tree = etree.parse(bkup_path, _safe_parser)
     root = tree.getroot()
     ns = {"m": MANIFEST_NS}
 

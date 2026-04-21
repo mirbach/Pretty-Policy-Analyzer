@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { getGPO } from './api';
 import type { GPOInfo, PolicySetting } from '../types/gpo';
 
@@ -35,59 +35,65 @@ function safeSheetName(name: string, index: number): string {
   const clean = name.replace(/[[\]:*?/\\]/g, '_');
   if (clean.length <= 31) return clean;
   const suffix = `(${index})`;
-  // Reserve space for suffix + space separator
   return clean.substring(0, 31 - suffix.length - 1) + ' ' + suffix;
 }
 
 function uniqueSheetName(base: string, used: Set<string>, index: number): string {
   if (!used.has(base)) return base;
-  // Append a disambiguating index, always staying ≤31 chars
   const tag = `_${index}`;
   return base.substring(0, 31 - tag.length) + tag;
 }
 
-/** Enable AutoFilter across the entire used range of a sheet. */
-function addAutoFilter(sheet: XLSX.WorkSheet): void {
-  const ref = sheet['!ref'];
-  if (ref) sheet['!autofilter'] = { ref };
+function addSheetFromRows(
+  wb: ExcelJS.Workbook,
+  name: string,
+  rows: Record<string, unknown>[],
+): void {
+  const sheet = wb.addWorksheet(name);
+  const nonEmpty = rows.filter((r) => Object.keys(r).length > 0);
+  if (nonEmpty.length === 0) return;
+
+  // Derive columns from the first non-empty row's keys
+  const keys = Object.keys(nonEmpty[0]);
+  sheet.columns = keys.map((key) => ({ header: key, key, width: 24 }));
+  sheet.addRows(nonEmpty);
+
+  // Apply auto-filter across the header row
+  const dims = sheet.dimensions;
+  if (dims) {
+    sheet.autoFilter = typeof dims === 'string' ? dims : String(dims);
+  }
 }
 
 export async function exportSelectedGPOs(gpoIds: string[]): Promise<void> {
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
 
   // Fetch all GPOs in parallel
   const details = await Promise.all(gpoIds.map((id) => getGPO(id)));
 
   // Summary sheet
-  const summaryRows = details.map((d) => infoToRow(d.info));
-  const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
-  addAutoFilter(summarySheet);
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+  addSheetFromRows(wb, 'Summary', details.map((d) => infoToRow(d.info)));
 
   // All Settings sheet — every setting from every GPO in one flat table
   const allSettingsRows = details.flatMap((d) =>
-    d.settings.map((s) => settingToRow(s, d.info.display_name))
+    d.settings.map((s) => settingToRow(s, d.info.display_name)),
   );
-  const allSheet = XLSX.utils.json_to_sheet(allSettingsRows.length > 0 ? allSettingsRows : [{}]);
-  addAutoFilter(allSheet);
-  XLSX.utils.book_append_sheet(wb, allSheet, 'All Settings');
+  addSheetFromRows(wb, 'All Settings', allSettingsRows);
 
   // One sheet per GPO
   const usedNames = new Set<string>(['Summary', 'All Settings']);
   details.forEach((d, i) => {
     const rows = d.settings.map((s) => settingToRow(s));
-    const sheet = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{}]);
-    addAutoFilter(sheet);
-
     const baseName = safeSheetName(d.info.display_name, i + 1);
     const sheetName = uniqueSheetName(baseName, usedNames, i + 1);
     usedNames.add(sheetName);
-    XLSX.utils.book_append_sheet(wb, sheet, sheetName);
+    addSheetFromRows(wb, sheetName, rows);
   });
 
-  // Use Blob download — works in all browsers (writeFile relies on Node FS)
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

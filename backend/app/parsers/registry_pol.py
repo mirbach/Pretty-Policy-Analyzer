@@ -66,6 +66,7 @@ def _decode_value(reg_type: int, data: bytes) -> Any:
 
 def parse_registry_pol(file_path: str, scope: PolicyScope) -> tuple[list[PolicySetting], list[str]]:
     """Parse a registry.pol file and return list of settings + warnings."""
+    file_path = os.path.realpath(file_path)
     if not os.path.isfile(file_path):
         return [], []
 

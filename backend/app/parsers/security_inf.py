@@ -20,6 +20,7 @@ SECTION_TYPE_MAP = {
 
 def parse_security_inf(file_path: str) -> tuple[list[PolicySetting], list[str]]:
     """Parse a GptTmpl.inf file and return list of settings + warnings."""
+    file_path = os.path.realpath(file_path)
     if not os.path.isfile(file_path):
         return [], []
 

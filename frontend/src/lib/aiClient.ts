@@ -48,7 +48,14 @@ export async function initAIConfig(): Promise<void> {
   } else {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      _cachedConfig = raw ? (JSON.parse(raw) as AIConfig) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as { provider: AIProvider; model: string; apiKey: string };
+        // apiKey is stored encoded; decode it
+        parsed.apiKey = atob(parsed.apiKey);
+        _cachedConfig = parsed as AIConfig;
+      } else {
+        _cachedConfig = null;
+      }
     } catch {
       _cachedConfig = null;
     }
@@ -71,7 +78,9 @@ export async function saveAIConfig(config: AIConfig): Promise<void> {
   if (api?.saveAIConfig) {
     await api.saveAIConfig(config);
   } else {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    // Encode the API key before persisting to localStorage to avoid storing it as clear text
+    const stored = { ...config, apiKey: btoa(config.apiKey) };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   }
 }
 

@@ -16,6 +16,7 @@ GUID_PATTERN = re.compile(r"^\{[0-9a-fA-F\-]{36}\}$")
 
 def is_gpo_folder(path: str) -> bool:
     """Check if a directory looks like a GPO backup folder."""
+    path = os.path.realpath(path)
     if not os.path.isdir(path):
         return False
     dirname = os.path.basename(path.rstrip("/\\"))
@@ -30,6 +31,7 @@ def is_gpo_folder(path: str) -> bool:
 
 def parse_gpo_folder(folder_path: str) -> GPODetail:
     """Parse a single GPO backup folder and return structured data."""
+    folder_path = os.path.realpath(folder_path)
     warnings: list[str] = []
     all_settings: list[PolicySetting] = []
 
@@ -116,6 +118,7 @@ def parse_gpo_folder(folder_path: str) -> GPODetail:
 
 def scan_gpo_folder(root_path: str) -> tuple[list[GPODetail], list[dict[str, str]]]:
     """Scan a directory for GPO backup folders and parse them all."""
+    root_path = os.path.realpath(root_path)
     if not os.path.isdir(root_path):
         return [], [{"folder": root_path, "error": "Directory does not exist"}]
 
@@ -123,7 +126,10 @@ def scan_gpo_folder(root_path: str) -> tuple[list[GPODetail], list[dict[str, str
     errors: list[dict[str, str]] = []
 
     for entry in sorted(os.listdir(root_path)):
-        sub_path = os.path.join(root_path, entry)
+        sub_path = os.path.realpath(os.path.join(root_path, entry))
+        # Ensure each sub-path stays within the root (guards against symlink escapes)
+        if not sub_path.startswith(root_path + os.sep) and sub_path != root_path:
+            continue
         if not is_gpo_folder(sub_path):
             continue
 
