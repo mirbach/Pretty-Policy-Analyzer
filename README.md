@@ -43,6 +43,15 @@ The **Baseline** view compares all loaded GPOs against one or more Microsoft Sec
 ### Export to Excel
 Select GPOs for comparison, then use the **Export** button to download a formatted Excel spreadsheet (`.xlsx`) with all selected GPO settings for offline review or compliance evidence collection.
 
+### Import Effective Local Policy
+Click the **Monitor** icon (🖥) in the toolbar to import the Resultant Set of Policy (RSoP) from the machine where the app is running. This executes `gpresult /X` behind the scenes and loads the merged, effective policy — exactly what the machine has applied — as a GPO entry called **"Effective Policy — \<hostname\>"**.
+
+- A **UAC elevation prompt** is shown automatically when the app is not already running as Administrator (required to retrieve Computer-scope policies).
+- The imported entry appears in the GPO list and can be browsed, searched, compared side-by-side with GPO backups, and checked against security baselines.
+- Only **registry-based and security settings** are captured (the same data that GPO backup exports contain). Non-registry extensions such as Software Installation and Scripts are not included.
+- Re-clicking the button refreshes the data with a new `gpresult` run.
+- Only available on Windows.
+
 ### Dark Mode
 Dark mode is enabled by default. Toggle it with the moon/sun icon in the toolbar. The preference is persisted across sessions.
 
