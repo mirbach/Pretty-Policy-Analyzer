@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, safeStorage, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { startSidecar, stopSidecar, getSidecarPort } from './sidecar';
@@ -88,6 +88,13 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   stopSidecar();
+});
+
+// IPC: open URL in default browser
+ipcMain.handle('open-external', (_event, url: string) => {
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'https:') return;
+  shell.openExternal(url);
 });
 
 // IPC: open folder dialog

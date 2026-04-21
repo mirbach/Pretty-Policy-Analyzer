@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('__electronAPI', {
     ipcRenderer.invoke('ai-config-save', config),
   loadAIConfig: (): Promise<{ provider: string; model: string; apiKey: string } | null> =>
     ipcRenderer.invoke('ai-config-load'),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });

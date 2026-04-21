@@ -31,6 +31,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 transition-colors"
           >
             <X size={16} />
@@ -54,15 +55,20 @@ export function AboutModal({ onClose }: AboutModalProps) {
         </div>
 
         {/* GitHub link */}
-        <a
-          href="https://github.com/mirbach/Pretty-Policy-Analyzer"
-          target="_blank"
-          rel="noreferrer"
+        <button
+          onClick={() => {
+            const url = 'https://github.com/mirbach/Pretty-Policy-Analyzer';
+            if ((window as any).__electronAPI?.openExternal) {
+              (window as any).__electronAPI.openExternal(url);
+            } else {
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          }}
           className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-surface-900 dark:bg-surface-100 text-white dark:text-surface-900 text-sm font-medium hover:bg-surface-700 dark:hover:bg-surface-200 transition-colors"
         >
           <ExternalLink size={16} />
           View on GitHub
-        </a>
+        </button>
       </div>
     </div>
   );
