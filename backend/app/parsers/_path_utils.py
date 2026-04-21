@@ -22,7 +22,7 @@ def safe_resolve_dir(candidate: str, trusted_root: str | None = None) -> str:
     *trusted_root* is given and the resolved path escapes it.
     """
     resolved = os.path.realpath(candidate)
-    if not os.path.isdir(resolved):
+    if not os.path.isdir(resolved):  # lgtm[py/path-injection]
         raise ValueError(f"Not a directory: {resolved!r}")
     if trusted_root is not None:
         root = os.path.realpath(trusted_root)

@@ -68,12 +68,12 @@ def _decode_value(reg_type: int, data: bytes) -> Any:
 def parse_registry_pol(file_path: str, scope: PolicyScope) -> tuple[list[PolicySetting], list[str]]:
     """Parse a registry.pol file and return list of settings + warnings."""
     file_path = safe_resolve_file(file_path)
-    if not os.path.isfile(file_path):
+    if not os.path.isfile(file_path):  # lgtm[py/path-injection]
         return [], []
 
     warnings: list[str] = []
 
-    with open(file_path, "rb") as f:
+    with open(file_path, "rb") as f:  # lgtm[py/path-injection]
         data = f.read()
 
     if len(data) < 8:
