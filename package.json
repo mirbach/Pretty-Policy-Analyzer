@@ -17,6 +17,7 @@
     "build": "npm run sync:icon && npm run build:frontend && npm run build:electron && npm run build:backend",
     "package:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --icon=electron/icon.ico --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines",
     "installer:win": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& npm run build && electron-builder --win nsis --publish never",
+    "portable:win": "npm run build && electron-packager . \"Pretty Policy Analyzer\" --platform=win32 --arch=x64 --icon=electron/icon.ico --out=release --overwrite --extra-resource=backend/dist/gpo-backend --extra-resource=SecurityBaselines && powershell -Command \"Compress-Archive -Force -Path 'release\\Pretty Policy Analyzer-win32-x64\\*' -DestinationPath 'release\\Pretty Policy Analyzer Portable.zip'\"",
     "postinstall": "cd frontend && npm install"
   },
   "devDependencies": {
