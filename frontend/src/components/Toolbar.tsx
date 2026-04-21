@@ -4,6 +4,7 @@ import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
 import { exportSelectedGPOs } from '../lib/exportExcel';
 import { AISettingsModal } from './AISettingsModal';
+import { AboutModal } from './AboutModal';
 import logo from '../assets/PPALogo.png';
 import {
   LayoutDashboard,
@@ -19,6 +20,7 @@ import {
   Settings,
   ShieldCheck,
   Monitor,
+  Info,
 } from 'lucide-react';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
@@ -73,6 +75,7 @@ export function Toolbar({
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showAISettings, setShowAISettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
@@ -269,8 +272,16 @@ export function Toolbar({
         >
           <Settings size={14} />
         </button>
+        <button
+          onClick={() => setShowAbout(true)}
+          className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+          title="About"
+        >
+          <Info size={14} />
+        </button>
       </div>
       {showAISettings && <AISettingsModal onClose={() => setShowAISettings(false)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </header>
   );
 }
