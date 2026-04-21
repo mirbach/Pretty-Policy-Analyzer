@@ -41,7 +41,8 @@ export async function clearData(): Promise<ScanStatus> {
 }
 
 export async function scanFolder(folderPath: string): Promise<ScanStatus> {
-  const { data } = await api.post('/api/scan', { folder_path: folderPath });
+  const { data: reg } = await api.post('/api/register-folder', { folder_path: folderPath });
+  const { data } = await api.post('/api/scan', { folder_id: reg.folder_id });
   return data;
 }
 
@@ -125,7 +126,8 @@ export async function uploadBaseline(files: UploadedFileItem[]): Promise<Baselin
 }
 
 export async function scanBaseline(folderPath: string): Promise<BaselineStatus> {
-  const { data } = await api.post('/api/baselines/scan', { folder_path: folderPath });
+  const { data: reg } = await api.post('/api/baselines/register-folder', { folder_path: folderPath });
+  const { data } = await api.post('/api/baselines/scan', { folder_id: reg.folder_id });
   return data;
 }
 

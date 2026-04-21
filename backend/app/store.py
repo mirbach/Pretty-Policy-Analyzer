@@ -131,3 +131,19 @@ def get_store() -> GPOStore:
     if _store is None:
         _store = GPOStore()
     return _store
+
+
+# Folder registry: opaque UUID -> validated resolved absolute path.
+# Populated by /api/register-folder; consumed by /api/scan and
+# /api/baselines/scan.  Paths are stored here after safe_resolve_dir
+# validation so no user-controlled string ever reaches a filesystem call
+# in the scan endpoints.
+_folder_registry: dict[str, str] = {}
+
+
+def register_folder(folder_id: str, resolved_path: str) -> None:
+    _folder_registry[folder_id] = resolved_path
+
+
+def lookup_folder(folder_id: str) -> Optional[str]:
+    return _folder_registry.get(folder_id)

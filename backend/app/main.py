@@ -6,6 +6,7 @@ import argparse
 import base64
 import shutil
 import sys
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -13,10 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from fastapi import HTTPException
-from .models import ScanRequest, ScanStatus, UploadedFileItem
+from .models import ScanRequest, ScanByIdRequest, RegisterFolderResponse, ScanStatus, UploadedFileItem
 from .parsers._path_utils import safe_resolve_dir
 from .routers import compare, conflicts, gpos, baselines
-from .store import get_store
+from .store import get_store, register_folder, lookup_folder
 from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
 
 app = FastAPI(
@@ -44,12 +45,30 @@ def get_status():
     return get_store().get_status()
 
 
-@app.post("/api/scan", response_model=ScanStatus)
-def scan_folder(request: ScanRequest):
+# Registry of validated folder paths: opaque UUID -> resolved absolute path.
+# Paths are stored here after safe_resolve_dir validation; only the UUID is
+# ever returned to the client, so no user-controlled string reaches a
+# filesystem call in the scan endpoints.
+
+
+@app.post("/api/register-folder", response_model=RegisterFolderResponse)
+def register_folder_endpoint(request: ScanRequest):
+    """Validate and register a user-supplied folder path; return an opaque ID."""
     try:
         safe_path = safe_resolve_dir(request.folder_path)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    folder_id = str(uuid.uuid4())
+    register_folder(folder_id, safe_path)
+    return RegisterFolderResponse(folder_id=folder_id)
+
+
+@app.post("/api/scan", response_model=ScanStatus)
+def scan_folder(request: ScanByIdRequest):
+    """Scan a previously registered folder by its opaque ID."""
+    safe_path = lookup_folder(request.folder_id)
+    if safe_path is None:
+        raise HTTPException(status_code=400, detail="Unknown folder_id; call /api/register-folder first")
     return get_store().scan(safe_path)
 
 

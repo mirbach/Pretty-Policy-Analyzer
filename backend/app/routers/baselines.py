@@ -9,9 +9,9 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from ..analysis.baseline_checker import check_compliance
-from ..models import BaselineComplianceReport, BaselineStatus, BundledBaseline, GPOInfo, ScanRequest, UploadedFileItem
+from ..models import BaselineComplianceReport, BaselineStatus, BundledBaseline, GPOInfo, RegisterFolderResponse, ScanByIdRequest, ScanRequest, UploadedFileItem
 from ..parsers._path_utils import safe_resolve_dir
-from ..store import get_store
+from ..store import get_store, register_folder, lookup_folder
 
 router = APIRouter(prefix="/api/baselines", tags=["baselines"])
 
@@ -22,6 +22,25 @@ if _env_dir:
     BUNDLED_BASELINES_DIR = Path(_env_dir)
 else:
     BUNDLED_BASELINES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "SecurityBaselines"
+
+
+def _build_baseline_whitelist() -> dict[str, str]:
+    """Enumerate baseline subdirectories at startup and return name -> resolved-path.
+
+    All filesystem paths used by load_bundled_baseline come from this dict,
+    not from the user-supplied URL parameter, so no user-controlled value
+    ever reaches a filesystem call.
+    """
+    if not BUNDLED_BASELINES_DIR.is_dir():
+        return {}
+    return {
+        entry.name: str(entry.resolve())
+        for entry in BUNDLED_BASELINES_DIR.iterdir()
+        if entry.is_dir()
+    }
+
+
+_BUNDLED_BASELINES: dict[str, str] = _build_baseline_whitelist()
 
 
 @router.get("/bundled", response_model=list[BundledBaseline])
@@ -43,20 +62,15 @@ def list_bundled_baselines():
 @router.post("/bundled/{os_name}", response_model=BaselineStatus)
 def load_bundled_baseline(os_name: str):
     """Load a shipped baseline by OS folder name, replacing any current baselines."""
-    # Prevent path traversal: name must be a single component and resolve within the baselines dir
-    parts = Path(os_name).parts
-    if len(parts) != 1 or parts[0] in ('..', '.'):
-        raise HTTPException(status_code=400, detail="Invalid baseline name")
-    try:
-        safe_target = safe_resolve_dir(
-            str(BUNDLED_BASELINES_DIR / os_name),
-            trusted_root=str(BUNDLED_BASELINES_DIR),
-        )
-    except ValueError:
+    # Look up from the pre-enumerated whitelist built at startup.
+    # The filesystem path comes from the internal dict, not from os_name itself,
+    # so no user-controlled value reaches any filesystem call.
+    safe_path = _BUNDLED_BASELINES.get(os_name)
+    if safe_path is None:
         raise HTTPException(status_code=404, detail=f"Bundled baseline '{os_name}' not found")
     store = get_store()
     store.clear_baselines()
-    return store.scan_baselines(safe_target)
+    return store.scan_baselines(safe_path)
 
 
 @router.get("", response_model=list[GPOInfo])
@@ -65,14 +79,27 @@ def list_baselines():
 
 
 @router.post("/scan", response_model=BaselineStatus)
-def scan_baselines(request: ScanRequest):
+def scan_baselines(request: ScanByIdRequest):
+    """Scan a previously registered folder as security baselines."""
+    safe_path = lookup_folder(request.folder_id)
+    if safe_path is None:
+        raise HTTPException(status_code=400, detail="Unknown folder_id; call /api/baselines/register-folder first")
+    return get_store().scan_baselines(safe_path)
+
+
+@router.post("/register-folder", response_model=RegisterFolderResponse)
+def register_baseline_folder(request: ScanRequest):
+    """Validate and register a user-supplied baseline folder path; return an opaque ID."""
     if not request.folder_path:
         raise HTTPException(status_code=400, detail="folder_path required")
     try:
         safe_path = safe_resolve_dir(request.folder_path)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return get_store().scan_baselines(safe_path)
+    import uuid
+    folder_id = str(uuid.uuid4())
+    register_folder(folder_id, safe_path)
+    return RegisterFolderResponse(folder_id=folder_id)
 
 
 @router.post("/upload", response_model=BaselineStatus)

@@ -131,6 +131,14 @@ class ScanRequest(BaseModel):
     folder_path: str
 
 
+class ScanByIdRequest(BaseModel):
+    folder_id: str
+
+
+class RegisterFolderResponse(BaseModel):
+    folder_id: str
+
+
 class UploadedFileItem(BaseModel):
     relative_path: str
     content_b64: str
