@@ -33,7 +33,10 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
     const config: AIConfig = { provider, apiKey: apiKey.trim(), model };
     await saveAIConfig(config);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => {
+      setSaved(false);
+      onClose();
+    }, 800);
   };
 
   return (
