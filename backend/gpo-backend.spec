@@ -83,7 +83,20 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        # chardet ships optional mypyc-compiled variants that are never present
+        # in a standard pip install — exclude them to suppress PyInstaller warnings.
+        'ascii__mypyc',
+        'confusion__mypyc',
+        'escape__mypyc',
+        'magic__mypyc',
+        'orchestrator__mypyc',
+        'statistical__mypyc',
+        'structural__mypyc',
+        'utf1632__mypyc',
+        'utf8__mypyc',
+        'validity__mypyc',
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

@@ -241,9 +241,12 @@ export function Toolbar({
               className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
               title="Import effective policy from this machine (runs gpresult)"
             >
-              <Monitor size={14} />
+              <Monitor size={14} className={importLocalMutation.isPending ? 'animate-pulse text-blue-500' : ''} />
             </button>
-            {importError && (
+            {importLocalMutation.isPending && (
+              <span className="text-xs text-blue-500 animate-pulse">Collecting policy…</span>
+            )}
+            {!importLocalMutation.isPending && importError && (
               <span className="text-xs text-red-500 max-w-[160px] truncate" title={importError}>
                 {importError}
               </span>

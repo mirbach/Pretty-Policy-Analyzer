@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
-from ..models import GPODetail, GPOInfo, PolicyScope, SettingType
+from ..models import GPODetail, GPOInfo, PolicyScope, ScanStatus, SettingType
 from ..store import get_store
 
 router = APIRouter(prefix="/api/gpos", tags=["gpos"])
@@ -30,6 +30,14 @@ def get_gpo(gpo_id: str):
     if gpo is None:
         raise HTTPException(status_code=404, detail=f"GPO '{gpo_id}' not found")
     return gpo
+
+
+@router.delete("/{gpo_id}", response_model=ScanStatus)
+def delete_gpo(gpo_id: str):
+    store = get_store()
+    if store.get_gpo(gpo_id) is None:
+        raise HTTPException(status_code=404, detail=f"GPO '{gpo_id}' not found")
+    return store.delete_gpo(gpo_id)
 
 
 @router.get("/{gpo_id}/settings")

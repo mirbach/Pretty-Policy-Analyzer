@@ -9,6 +9,8 @@ import sys
 import uuid
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,10 +22,23 @@ from .routers import compare, conflicts, gpos, baselines
 from .store import get_store, register_folder, lookup_folder
 from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run startup tasks before the server begins accepting requests."""
+    store = get_store()
+    last = store.load_last_folder()
+    if last:
+        store.scan(last)
+    store.load_effective_policy()
+    yield
+
+
 app = FastAPI(
     title="Pretty Policy Analyzer",
     description="Analyze, compare, and find conflicts in Active Directory GPO backups",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -99,13 +114,14 @@ def clear_data():
 
 
 @app.post("/api/import-local-policy", response_model=ScanStatus)
-def import_local_policy():
+async def import_local_policy():
     """Run gpresult /X and import the effective policy of this machine."""
+    import asyncio
     import os
     xml_path: str | None = None
     try:
-        xml_path = run_gpresult(scope="both")
-        gpo, _warnings = parse_gpresult_xml(xml_path)
+        xml_path = await asyncio.to_thread(run_gpresult, scope="both")
+        gpo, _warnings = await asyncio.to_thread(parse_gpresult_xml, xml_path)
         return get_store().add_or_replace_gpo(gpo)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -133,11 +149,6 @@ def main() -> None:
 
     if args.scan:
         get_store().scan(args.scan)
-    else:
-        # Try to load last used folder
-        last = get_store().load_last_folder()
-        if last:
-            get_store().scan(last)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 

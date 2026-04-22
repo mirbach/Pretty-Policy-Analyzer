@@ -13,6 +13,7 @@ from .parsers.gpo_parser import scan_gpo_folder
 
 CONFIG_DIR = Path.home() / ".pretty-policy-analyzer"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+EFFECTIVE_POLICY_FILE = CONFIG_DIR / "effective_policy.json"
 
 
 class GPOStore:
@@ -57,6 +58,21 @@ class GPOStore:
         """Add or replace a single GPO without clearing the rest."""
         categorize_settings(gpo.settings)
         self._gpos[gpo.info.id] = gpo
+        if gpo.info.id == "local-gpresult":
+            self._save_effective_policy(gpo)
+        return self.get_status()
+
+    def delete_gpo(self, gpo_id: str) -> ScanStatus:
+        """Remove a single GPO from the store. Also clears on-disk cache for effective policy."""
+        if gpo_id not in self._gpos:
+            return self.get_status()
+        del self._gpos[gpo_id]
+        if gpo_id == "local-gpresult":
+            try:
+                if EFFECTIVE_POLICY_FILE.exists():
+                    EFFECTIVE_POLICY_FILE.unlink()
+            except OSError:
+                pass
         return self.get_status()
 
     def clear(self) -> ScanStatus:
@@ -72,6 +88,12 @@ class GPOStore:
         # Clear saved config
         try:
             CONFIG_FILE.write_text(json.dumps({}, indent=2))
+        except OSError:
+            pass
+        # Clear cached effective policy
+        try:
+            if EFFECTIVE_POLICY_FILE.exists():
+                EFFECTIVE_POLICY_FILE.unlink()
         except OSError:
             pass
         return self.get_status()
@@ -92,6 +114,22 @@ class GPOStore:
         except (OSError, json.JSONDecodeError):
             pass
         return None
+
+    def _save_effective_policy(self, gpo: GPODetail) -> None:
+        try:
+            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            EFFECTIVE_POLICY_FILE.write_text(gpo.model_dump_json(), encoding="utf-8")
+        except OSError:
+            pass
+
+    def load_effective_policy(self) -> None:
+        """Restore cached effective policy from disk (called on startup)."""
+        try:
+            if EFFECTIVE_POLICY_FILE.is_file():
+                gpo = GPODetail.model_validate_json(EFFECTIVE_POLICY_FILE.read_text(encoding="utf-8"))
+                self._gpos[gpo.info.id] = gpo
+        except Exception:
+            pass
 
     # ── Baseline methods ──────────────────────────────────────────────────────
 

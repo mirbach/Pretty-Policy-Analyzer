@@ -53,6 +53,17 @@ export function useImportLocalPolicy() {
   });
 }
 
+export function useDeleteGPO() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteGPO(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['status'] });
+      qc.invalidateQueries({ queryKey: ['gpos'] });
+    },
+  });
+}
+
 export function useGPOs(search?: string) {
   return useQuery({
     queryKey: ['gpos', search],

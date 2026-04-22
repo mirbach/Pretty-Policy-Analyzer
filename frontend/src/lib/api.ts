@@ -61,6 +61,11 @@ export async function importLocalPolicy(): Promise<ScanStatus> {
   return data;
 }
 
+export async function deleteGPO(id: string): Promise<ScanStatus> {
+  const { data } = await api.delete(`/api/gpos/${encodeURIComponent(id)}`);
+  return data;
+}
+
 export async function listGPOs(search?: string): Promise<GPOInfo[]> {
   const { data } = await api.get('/api/gpos', { params: { search } });
   return data;
