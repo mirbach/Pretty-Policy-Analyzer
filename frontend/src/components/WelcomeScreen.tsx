@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
-import { useScanFolder, useScanUpload } from '../hooks/useApi';
+import { useScanFolder, useScanUpload, useImportLocalPolicy } from '../hooks/useApi';
 import type { UploadedFileItem } from '../lib/api';
 import logo from '../assets/PPALogo.png';
-import { FolderOpen, AlertCircle, ArrowRight, Loader } from 'lucide-react';
+import { FolderOpen, AlertCircle, ArrowRight, Loader, Monitor } from 'lucide-react';
 
 /** Recursively collect all files from a FileSystemDirectoryHandle. */
 async function collectFiles(
@@ -34,11 +34,13 @@ export function WelcomeScreen() {
   const [readError, setReadError] = useState<string | null>(null);
   const [showInput, setShowInput] = useState(false);
   const [folderPath, setFolderPath] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
+  const localMutation = useImportLocalPolicy();
 
-  const isPending = scanMutation.isPending || uploadMutation.isPending || isReading;
+  const isPending = scanMutation.isPending || uploadMutation.isPending || isReading || localMutation.isPending;
   const isError = scanMutation.isError || uploadMutation.isError || !!readError;
   const errorMsg =
     readError ||
@@ -114,8 +116,8 @@ export function WelcomeScreen() {
                 disabled={isPending}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-surface-400 text-white rounded-lg transition-colors"
               >
-                {isPending ? <Loader size={20} className="animate-spin" /> : <FolderOpen size={20} />}
-                {isReading ? 'Reading files…' : isPending ? 'Scanning…' : 'Browse for Folder'}
+                {(scanMutation.isPending || uploadMutation.isPending || isReading) ? <Loader size={20} className="animate-spin" /> : <FolderOpen size={20} />}
+                {isReading ? 'Reading files…' : (scanMutation.isPending || uploadMutation.isPending) ? 'Scanning…' : 'Browse for GPO Backup Folder'}
               </button>
             ) : (
               <div className="flex gap-2">
@@ -138,14 +140,46 @@ export function WelcomeScreen() {
                 </button>
               </div>
             )}
-          </div>
 
-          {isError && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
-              <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
-              <span className="text-sm text-red-700 dark:text-red-400">{errorMsg}</span>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-surface-200 dark:border-surface-700" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white dark:bg-surface-800 text-surface-400">or</span>
+              </div>
             </div>
-          )}
+
+            <button
+              onClick={() => {
+                setLocalError(null);
+                localMutation.mutate(undefined, {
+                  onError: (err: any) => {
+                    setLocalError(err?.response?.data?.detail ?? err?.message ?? 'Local policy scan failed');
+                  },
+                });
+              }}
+              disabled={isPending}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-surface-700 hover:bg-surface-600 dark:bg-surface-700 dark:hover:bg-surface-600 disabled:bg-surface-400 text-white rounded-lg transition-colors"
+            >
+              {localMutation.isPending ? <Loader size={20} className="animate-spin" /> : <Monitor size={20} />}
+              {localMutation.isPending ? 'Collecting policy…' : "Scan This Machine's Policies"}
+            </button>
+
+            {isError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-red-700 dark:text-red-400">{errorMsg}</span>
+              </div>
+            )}
+
+            {localError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-red-700 dark:text-red-400">{localError}</span>
+              </div>
+            )}
+          </div>
 
           {data && data.gpo_count === 0 && (
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
