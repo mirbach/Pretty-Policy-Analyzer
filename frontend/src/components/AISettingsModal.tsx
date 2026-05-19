@@ -4,7 +4,7 @@ import {
   type AIConfig,
   type AIProvider,
   PROVIDER_LABELS,
-  PROVIDER_MODELS,
+  fetchAvailableModels,
   loadAIConfig,
   saveAIConfig,
 } from '../lib/aiClient';
@@ -19,15 +19,37 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
   const existing = loadAIConfig();
   const [provider, setProvider] = useState<AIProvider>(existing?.provider ?? 'openai');
   const [apiKey, setApiKey] = useState(existing?.apiKey ?? '');
-  const [model, setModel] = useState(existing?.model ?? PROVIDER_MODELS['openai'][0]);
+  const [model, setModel] = useState(existing?.model ?? '');
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
 
-  // Reset model when provider changes
   useEffect(() => {
-    const models = PROVIDER_MODELS[provider];
-    if (!models.includes(model)) setModel(models[0]);
-  }, [provider, model]);
+    const key = apiKey.trim();
+    if (!key) {
+      setModels([]);
+      setModelError(null);
+      setLoadingModels(false);
+      return;
+    }
+    setLoadingModels(true);
+    setModelError(null);
+    const t = setTimeout(async () => {
+      try {
+        const fetched = await fetchAvailableModels(provider, key);
+        setModels(fetched);
+        setModel(prev => fetched.includes(prev) ? prev : (fetched[0] ?? ''));
+      } catch (e) {
+        setModelError(e instanceof Error ? e.message : 'Failed to load models');
+        setModels([]);
+      } finally {
+        setLoadingModels(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [provider, apiKey]);
 
   const handleSave = async () => {
     const config: AIConfig = { provider, apiKey: apiKey.trim(), model };
@@ -37,6 +59,23 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
       setSaved(false);
       onClose();
     }, 800);
+  };
+
+  const handleRetry = () => {
+    const key = apiKey.trim();
+    if (!key) return;
+    setLoadingModels(true);
+    setModelError(null);
+    fetchAvailableModels(provider, key)
+      .then(fetched => {
+        setModels(fetched);
+        setModel(prev => fetched.includes(prev) ? prev : (fetched[0] ?? ''));
+      })
+      .catch(e => {
+        setModelError(e instanceof Error ? e.message : 'Failed to load models');
+        setModels([]);
+      })
+      .finally(() => setLoadingModels(false));
   };
 
   return (
@@ -102,31 +141,61 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
 
           {/* Model */}
           <div>
-            <label htmlFor="ai-model-select" className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">Model</label>
-            <select
-              id="ai-model-select"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {PROVIDER_MODELS[provider].map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="ai-model-select" className="block text-xs font-medium text-surface-500 dark:text-surface-400">Model</label>
+              {!loadingModels && apiKey.trim() && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
+                >
+                  ↻ Refresh
+                </button>
+              )}
+            </div>
+            {loadingModels ? (
+              <p className="text-xs text-surface-400 dark:text-surface-500 py-2">Loading models…</p>
+            ) : modelError ? (
+              <div className="space-y-2">
+                <p className="text-xs text-red-500">{modelError}</p>
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Enter model name manually (e.g. grok-3)"
+                  className="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            ) : models.length > 0 ? (
+              <select
+                id="ai-model-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {models.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs text-surface-400 dark:text-surface-500 py-2">Enter your API key to load available models.</p>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
-            disabled={!apiKey.trim()}
+            disabled={!apiKey.trim() || !model || loadingModels}
             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
           >
             {saved ? '✓ Saved' : 'Save'}

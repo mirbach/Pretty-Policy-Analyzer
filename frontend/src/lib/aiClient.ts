@@ -12,11 +12,6 @@ export const PROVIDER_LABELS: Record<AIProvider, string> = {
   gemini: 'Gemini (Google)',
 };
 
-export const PROVIDER_MODELS: Record<AIProvider, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  xai: ['grok-4-1-fast-non-reasoning', 'grok-4-1-fast-reasoning', 'grok-3', 'grok-3-mini', 'grok-2'],
-  gemini: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-};
 
 const STORAGE_KEY = 'pretty_policy_analyzer_ai_config';
 
@@ -116,6 +111,46 @@ async function callOpenAICompat(prompt: string, config: AIConfig): Promise<strin
 
   const data = await resp.json() as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content ?? '(No response)';
+}
+
+export async function fetchAvailableModels(provider: AIProvider, apiKey: string): Promise<string[]> {
+  if (provider === 'gemini') {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
+    );
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(`Failed to fetch models (${resp.status})${body ? `: ${body}` : ''}`);
+    }
+    const data = await resp.json() as { models: { name: string; supportedGenerationMethods: string[] }[] };
+    return data.models
+      .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace('models/', ''))
+      .sort();
+  }
+
+  const baseUrl = provider === 'xai' ? 'https://api.x.ai/v1' : 'https://api.openai.com/v1';
+  const resp = await fetch(`${baseUrl}/models`, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as { error?: string; message?: string };
+      detail = parsed.error ?? parsed.message ?? body;
+    } catch { /* not JSON, use raw body */ }
+    throw new Error(`Failed to fetch models (${resp.status})${detail ? `: ${detail}` : ''}`);
+  }
+  const data = await resp.json() as { data: { id: string }[] };
+  let ids = data.data.map(m => m.id).sort();
+  if (provider === 'openai') {
+    ids = ids.filter(id => id.startsWith('gpt-') || /^o\d/.test(id));
+  }
+  return ids;
 }
 
 async function callGemini(prompt: string, config: AIConfig): Promise<string> {
