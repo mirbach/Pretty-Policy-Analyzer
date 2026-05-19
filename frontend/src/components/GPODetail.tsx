@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useGPO } from '../hooks/useApi';
 import { SettingsTree } from './SettingsTree';
-import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { GPOIntuneModal } from './GPOIntuneModal';
+import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles } from 'lucide-react';
 
 type AiCache = Record<string, string>;
 
@@ -15,6 +16,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
   const { data: gpo, isLoading, error } = useGPO(gpoId);
   const [search, setSearch] = useState('');
   const [forceExpand, setForceExpand] = useState<{ value: boolean; seq: number } | undefined>(undefined);
+  const [showIntuneModal, setShowIntuneModal] = useState(false);
 
   const handleExpandAll = () => setForceExpand((prev) => ({ value: true, seq: (prev?.seq ?? 0) + 1 }));
   const handleCollapseAll = () => setForceExpand((prev) => ({ value: false, seq: (prev?.seq ?? 0) + 1 }));
@@ -105,6 +107,13 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
           >
             <ChevronsDownUp size={13} /> Collapse all
           </button>
+          <button
+            onClick={() => setShowIntuneModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-md transition-colors border border-violet-200 dark:border-violet-800"
+            title="Generate Intune settings list for this GPO"
+          >
+            <Sparkles size={12} /> Generate Intune Settings
+          </button>
         </div>
       </div>
 
@@ -112,6 +121,16 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
       <div className="flex-1 overflow-y-auto">
         <SettingsTree settings={settings} search={search} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} />
       </div>
+
+      {showIntuneModal && (
+        <GPOIntuneModal
+          info={info}
+          settings={settings}
+          aiCache={aiCache}
+          setAiCache={setAiCache}
+          onClose={() => setShowIntuneModal(false)}
+        />
+      )}
     </div>
   );
 }
