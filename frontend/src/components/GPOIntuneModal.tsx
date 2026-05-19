@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { X, Sparkles, Copy, Check, RefreshCw } from 'lucide-react';
+import { X, Sparkles, Copy, Check, RefreshCw, Download } from 'lucide-react';
 import { loadAIConfig, callAI } from '../lib/aiClient';
 import type { PolicySetting, GPOInfo } from '../types/gpo';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { downloadYamlFile } from '../lib/exportYaml';
 
 export const POLICY_INTUNE_CACHE_KEY = '__policy_intune_export__';
+export const POLICY_INTUNE_YAML_CACHE_KEY = '__policy_intune_yaml__';
 
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => <h1 className="text-sm font-bold text-surface-800 dark:text-surface-200 mt-3 mb-1">{children}</h1>,
@@ -47,10 +49,19 @@ interface Props {
 
 export function GPOIntuneModal({ info, settings, aiCache, setAiCache, onClose }: Props) {
   const [loading, setLoading] = useState(false);
+  const [yamlLoading, setYamlLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const cachedResult = aiCache[POLICY_INTUNE_CACHE_KEY] ?? null;
+
+  const buildSettingLines = () =>
+    settings.map(s => {
+      const name = s.display_name || s.value_name || s.key_path;
+      const val = s.value_display || String(s.value ?? '');
+      const valuePath = s.value_name ? `${s.key_path}\\${s.value_name}` : s.key_path;
+      return `[${s.scope}] ${name}: ${val} (${s.state}) | ${valuePath} | ${s.setting_type}`;
+    }).join('\n');
 
   const handleGenerate = async () => {
     const config = loadAIConfig();
@@ -62,12 +73,7 @@ export function GPOIntuneModal({ info, settings, aiCache, setAiCache, onClose }:
     setLoading(true);
     setError(null);
 
-    const settingLines = settings.map(s => {
-      const name = s.display_name || s.value_name || s.key_path;
-      const val = s.value_display || String(s.value ?? '');
-      const valuePath = s.value_name ? `${s.key_path}\\${s.value_name}` : s.key_path;
-      return `[${s.scope}] ${name}: ${val} (${s.state}) | ${valuePath} | ${s.setting_type}`;
-    }).join('\n');
+    const settingLines = buildSettingLines();
 
     const prompt = `You are a Windows Group Policy and Microsoft Intune expert.
 
@@ -115,6 +121,73 @@ Be specific and practical.`;
     }
   };
 
+  const handleExportYaml = async () => {
+    const cached = aiCache[POLICY_INTUNE_YAML_CACHE_KEY];
+    if (cached) {
+      const date = new Date().toISOString().slice(0, 10);
+      const safeName = info.display_name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      downloadYamlFile(cached, `Intune_${safeName}_${date}.yaml`);
+      return;
+    }
+
+    const config = loadAIConfig();
+    if (!config?.apiKey) {
+      setError('No AI configured. Click the ⚙ Settings icon in the toolbar to add your API key.');
+      return;
+    }
+
+    setYamlLoading(true);
+    setError(null);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const prompt = `You are a Windows Group Policy and Microsoft Intune expert.
+
+Convert the following GPO settings to Microsoft Intune OMA-URI custom profiles.
+Output ONLY valid YAML — no markdown, no explanations, no code fences.
+
+Use this exact schema:
+
+name: "<GPO display name>"
+domain: "<domain>"
+exported: "<YYYY-MM-DD>"
+gpo_guid: "<guid>"
+
+profiles:
+  - displayName: "<descriptive Intune profile name>"
+    scope: <Computer|User>
+    omaUri: "<./Device/... or ./User/... OMA-URI path>"
+    dataType: <Integer|String|Boolean|Base64>
+    value: <value>
+    gpo_setting: "<original GPO setting display name>"
+    policy_type: <"Custom OMA-URI"|"Settings Catalog"|"Endpoint Security">
+
+unmapped:
+  - displayName: "<setting name>"
+    keyPath: "<registry key path>"
+    valueName: "<value name>"
+    reason: "<why no direct Intune equivalent exists>"
+
+GPO Name: ${info.display_name}
+Domain: ${info.domain || 'N/A'}
+GPO GUID: ${info.gpo_guid}
+Total Settings: ${settings.length}
+
+Settings:
+${buildSettingLines()}`;
+
+    try {
+      const result = await callAI(prompt, config);
+      setAiCache(prev => ({ ...prev, [POLICY_INTUNE_YAML_CACHE_KEY]: result }));
+      const date = new Date().toISOString().slice(0, 10);
+      const safeName = info.display_name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      downloadYamlFile(result, `Intune_${safeName}_${date}.yaml`);
+    } catch (err: unknown) {
+      setError((err as Error)?.message ?? 'AI request failed');
+    } finally {
+      setYamlLoading(false);
+    }
+  };
+
   const handleCopy = async () => {
     if (!cachedResult) return;
     await navigator.clipboard.writeText(cachedResult);
@@ -139,6 +212,7 @@ Be specific and practical.`;
           <div className="flex items-center gap-2">
             {cachedResult && !loading && (
               <button
+                type="button"
                 onClick={handleCopy}
                 className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
               >
@@ -147,6 +221,19 @@ Be specific and practical.`;
               </button>
             )}
             <button
+              type="button"
+              onClick={handleExportYaml}
+              disabled={yamlLoading}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors disabled:opacity-50"
+            >
+              {yamlLoading
+                ? <span className="w-3 h-3 border border-surface-400 border-t-transparent rounded-full animate-spin" />
+                : <Download size={12} />}
+              {yamlLoading ? 'Generating…' : 'Export YAML'}
+            </button>
+            <button
+              type="button"
+              title="Close"
               onClick={onClose}
               className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors"
             >
@@ -169,6 +256,7 @@ Be specific and practical.`;
                 </p>
               </div>
               <button
+                type="button"
                 onClick={handleGenerate}
                 className="flex items-center gap-2 px-4 py-2 rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
               >
@@ -196,6 +284,7 @@ Be specific and practical.`;
             <div>
               <div className="flex justify-end mb-3">
                 <button
+                  type="button"
                   onClick={handleGenerate}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
                 >
