@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useGPO } from '../hooks/useApi';
 import { SettingsTree } from './SettingsTree';
 import { GPOIntuneModal } from './GPOIntuneModal';
-import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles } from 'lucide-react';
+import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { gpoStatusKey, type GpoMigrationStatusMap, type MigrationStatusStore } from '../lib/migrationStatus';
 
 type AiCache = Record<string, string>;
 
@@ -10,9 +11,11 @@ interface GPODetailProps {
   gpoId: string;
   aiCache: AiCache;
   setAiCache: (updater: (prev: AiCache) => AiCache) => void;
+  migrationStatusStore: MigrationStatusStore;
+  setMigrationStatusStore: (updater: (prev: MigrationStatusStore) => MigrationStatusStore) => void;
 }
 
-export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
+export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, setMigrationStatusStore }: GPODetailProps) {
   const { data: gpo, isLoading, error } = useGPO(gpoId);
   const [search, setSearch] = useState('');
   const [forceExpand, setForceExpand] = useState<{ value: boolean; seq: number } | undefined>(undefined);
@@ -30,6 +33,14 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
   }
 
   const { info, settings, parse_warnings } = gpo;
+
+  const gKey = gpoStatusKey(info);
+  const statusMap = migrationStatusStore[gKey] ?? {};
+  const setStatusMap = (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) =>
+    setMigrationStatusStore((prev) => ({ ...prev, [gKey]: updater(prev[gKey] ?? {}) }));
+
+  const migratedCount = Object.values(statusMap).filter((e) => e.status === 'migrated').length;
+  const wontMigrateCount = Object.values(statusMap).filter((e) => e.status === 'wont_migrate').length;
 
   return (
     <div className="h-full flex flex-col">
@@ -56,6 +67,12 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
           )}
           <span className="flex items-center gap-1">
             <Shield size={12} /> {info.setting_count} settings
+          </span>
+          <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+            <CheckCircle2 size={12} /> {migratedCount} migrated
+          </span>
+          <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <XCircle size={12} /> {wontMigrateCount} won't migrate
           </span>
           <span className="flex items-center gap-1">
             <Monitor size={12} /> Computer: {info.computer_enabled ? 'Enabled' : 'Disabled'}
@@ -119,7 +136,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache }: GPODetailProps) {
 
       {/* Settings tree */}
       <div className="flex-1 overflow-y-auto">
-        <SettingsTree settings={settings} search={search} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} />
+        <SettingsTree settings={settings} search={search} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
       </div>
 
       {showIntuneModal && (

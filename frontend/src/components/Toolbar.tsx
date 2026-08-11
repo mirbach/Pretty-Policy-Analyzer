@@ -21,9 +21,10 @@ import {
   ShieldCheck,
   Monitor,
   Info,
+  ListChecks,
 } from 'lucide-react';
 
-type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
+type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
 
 /** Recursively collect all files from a FileSystemDirectoryHandle. */
 async function collectFiles(
@@ -124,6 +125,7 @@ export function Toolbar({
     { view: 'conflicts', icon: AlertTriangle, label: 'Conflicts' },
     { view: 'search', icon: Search, label: 'Search' },
     { view: 'baseline', icon: ShieldCheck, label: 'Baseline' },
+    { view: 'migration', icon: ListChecks, label: 'Migration' },
   ];
 
   return (

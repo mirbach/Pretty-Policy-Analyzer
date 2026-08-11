@@ -9,9 +9,11 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { Toolbar } from './components/Toolbar';
 import { GlobalSearch } from './components/GlobalSearch';
 import { BaselineView } from './components/BaselineView';
+import { MigrationReportView } from './components/MigrationReportView';
 import { initAIConfig } from './lib/aiClient';
+import { loadMigrationStatusStore, MIGRATION_STATUS_STORAGE_KEY, type MigrationStatusStore } from './lib/migrationStatus';
 
-type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline';
+type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
 
 type AiCache = Record<string, string>;
 
@@ -33,6 +35,7 @@ export default function App() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState<View>('detail');
   const [allAiCaches, setAllAiCaches] = useState<Record<string, AiCache>>(loadPersistedAiCaches);
+  const [migrationStatusStore, setMigrationStatusStore] = useState<MigrationStatusStore>(loadMigrationStatusStore);
 
   // Load AI config once (from safeStorage in Electron, localStorage in browser)
   useEffect(() => { void initAIConfig(); }, []);
@@ -45,6 +48,15 @@ export default function App() {
       // quota exceeded or private browsing — silently skip
     }
   }, [allAiCaches]);
+
+  // Persist migration status to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(MIGRATION_STATUS_STORAGE_KEY, JSON.stringify(migrationStatusStore));
+    } catch {
+      // quota exceeded or private browsing — silently skip
+    }
+  }, [migrationStatusStore]);
 
   const getAiCacheProps = (gpoId: string) => ({
     aiCache: allAiCaches[gpoId] ?? {} as AiCache,
@@ -106,7 +118,13 @@ export default function App() {
         {/* Main content */}
         <main className="flex-1 overflow-auto">
           {currentView === 'detail' && selectedGpoId && (
-            <GPODetail key={selectedGpoId} gpoId={selectedGpoId} {...getAiCacheProps(selectedGpoId)} />
+            <GPODetail
+              key={selectedGpoId}
+              gpoId={selectedGpoId}
+              {...getAiCacheProps(selectedGpoId)}
+              migrationStatusStore={migrationStatusStore}
+              setMigrationStatusStore={setMigrationStatusStore}
+            />
           )}
           {currentView === 'detail' && !selectedGpoId && (
             <div className="h-full flex items-center justify-center text-surface-400">
@@ -122,6 +140,7 @@ export default function App() {
           {currentView === 'conflicts' && <ConflictView />}
           {currentView === 'search' && <GlobalSearch />}
           {currentView === 'baseline' && <BaselineView />}
+          {currentView === 'migration' && <MigrationReportView migrationStatusStore={migrationStatusStore} />}
         </main>
       </div>
     </div>

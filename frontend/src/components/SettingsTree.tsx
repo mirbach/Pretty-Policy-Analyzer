@@ -1,11 +1,25 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { PolicySetting } from '../types/gpo';
-import { ChevronRight, ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronDown, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
 import { loadAIConfig, callAI } from '../lib/aiClient';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CopyExportToolbar } from './CopyExportToolbar';
+import {
+  settingStatusKey,
+  MIGRATION_STATUS_LABELS,
+  type MigrationStatus,
+  type GpoMigrationStatusMap,
+} from '../lib/migrationStatus';
+
+const MIGRATION_STATUSES: MigrationStatus[] = ['not_migrated', 'migrated', 'wont_migrate'];
+
+const STATUS_BUTTON_ACTIVE: Record<MigrationStatus, string> = {
+  not_migrated: 'bg-surface-300 dark:bg-surface-600 text-surface-800 dark:text-surface-100',
+  migrated: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
+  wont_migrate: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400',
+};
 
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => <h1 className="text-sm font-bold text-surface-800 dark:text-surface-200 mt-3 mb-1">{children}</h1>,
@@ -113,12 +127,16 @@ function TreeBranch({
   forceExpand,
   aiCache,
   setAiCache,
+  statusMap,
+  setStatusMap,
 }: {
   node: TreeNode;
   depth?: number;
   forceExpand?: { value: boolean; seq: number };
   aiCache: AiCache;
   setAiCache: (updater: (prev: AiCache) => AiCache) => void;
+  statusMap: GpoMigrationStatusMap;
+  setStatusMap: (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) => void;
 }) {
   const [expanded, setExpanded] = useState(depth < 2);
 
@@ -154,11 +172,11 @@ function TreeBranch({
         <>
           {/* Settings at this level */}
           {node.settings.map((s, i) => (
-            <SettingRow key={`${s.key_path}-${s.value_name}-${i}`} setting={s} depth={depth + 1} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} />
+            <SettingRow key={`${s.key_path}-${s.value_name}-${i}`} setting={s} depth={depth + 1} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
           ))}
           {/* Child branches */}
           {childNodes.map((child) => (
-            <TreeBranch key={child.path} node={child} depth={depth + 1} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} />
+            <TreeBranch key={child.path} node={child} depth={depth + 1} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
           ))}
         </>
       )}
@@ -172,12 +190,16 @@ function SettingRow({
   forceExpand,
   aiCache,
   setAiCache,
+  statusMap,
+  setStatusMap,
 }: {
   setting: PolicySetting;
   depth: number;
   forceExpand?: { value: boolean; seq: number };
   aiCache: AiCache;
   setAiCache: (updater: (prev: AiCache) => AiCache) => void;
+  statusMap: GpoMigrationStatusMap;
+  setStatusMap: (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) => void;
 }) {
   const cacheKey = `${s.key_path}||${s.value_name}`;
   const [expanded, setExpanded] = useState(false);
@@ -186,6 +208,35 @@ function SettingRow({
   const aiResponse = aiCache[cacheKey] ?? null;
   const aiResultRef = useRef<HTMLDivElement>(null);
   const filenameBase = `Intune_${(s.display_name || s.value_name || s.key_path).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+  const sKey = settingStatusKey(s);
+  const statusEntry = statusMap[sKey];
+  const migrationStatus: MigrationStatus = statusEntry?.status ?? 'not_migrated';
+
+  const handleSetStatus = (status: MigrationStatus) => {
+    setStatusMap((prev) => {
+      if (status === 'not_migrated') {
+        const next = { ...prev };
+        delete next[sKey];
+        return next;
+      }
+      return {
+        ...prev,
+        [sKey]: {
+          status,
+          reason: status === 'wont_migrate' ? (prev[sKey]?.reason ?? '') : undefined,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const handleReasonChange = (reason: string) => {
+    setStatusMap((prev) => ({
+      ...prev,
+      [sKey]: { status: 'wont_migrate', reason, updatedAt: new Date().toISOString() },
+    }));
+  };
 
   useEffect(() => {
     if (forceExpand !== undefined) setExpanded(forceExpand.value);
@@ -249,6 +300,19 @@ Be specific and practical.`;
         <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${stateColor(s.state)}`}>
           {s.state}
         </span>
+        {migrationStatus === 'migrated' && (
+          <span title="Migrated" className="shrink-0 text-green-600 dark:text-green-400 mt-0.5">
+            <CheckCircle2 size={14} />
+          </span>
+        )}
+        {migrationStatus === 'wont_migrate' && (
+          <span
+            title={statusEntry?.reason ? `Won't migrate: ${statusEntry.reason}` : "Won't migrate — reason needed"}
+            className={`shrink-0 mt-0.5 ${statusEntry?.reason ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400'}`}
+          >
+            <XCircle size={14} />
+          </span>
+        )}
       </button>
 
       {expanded && (
@@ -279,6 +343,43 @@ Be specific and practical.`;
               {s.explain}
             </div>
           )}
+
+          {/* Migration Status */}
+          <div className="mt-2 pt-2 border-t border-surface-200 dark:border-surface-700">
+            <div className="text-surface-400 mb-1">Migration Status:</div>
+            <div className="flex items-center gap-1.5">
+              {MIGRATION_STATUSES.map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => handleSetStatus(st)}
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    migrationStatus === st
+                      ? STATUS_BUTTON_ACTIVE[st]
+                      : 'bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'
+                  }`}
+                >
+                  {MIGRATION_STATUS_LABELS[st]}
+                </button>
+              ))}
+            </div>
+            {migrationStatus === 'wont_migrate' && (
+              <div className="mt-1.5">
+                <textarea
+                  value={statusEntry?.reason ?? ''}
+                  onChange={(e) => handleReasonChange(e.target.value)}
+                  placeholder="Reason this setting won't be migrated…"
+                  rows={2}
+                  className={`w-full text-xs px-2 py-1 border rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    statusEntry?.reason ? 'border-surface-300 dark:border-surface-600' : 'border-red-300 dark:border-red-700'
+                  }`}
+                />
+                {!statusEntry?.reason && (
+                  <div className="mt-0.5 text-red-500 dark:text-red-400">Reason needed</div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* AI Explain & Intune Migration */}
           <div className="mt-2 pt-2 border-t border-surface-200 dark:border-surface-700">
@@ -332,9 +433,11 @@ interface SettingsTreeProps {
   forceExpand?: { value: boolean; seq: number };
   aiCache: AiCache;
   setAiCache: (updater: (prev: AiCache) => AiCache) => void;
+  statusMap: GpoMigrationStatusMap;
+  setStatusMap: (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) => void;
 }
 
-export function SettingsTree({ settings, search, forceExpand, aiCache, setAiCache }: SettingsTreeProps) {
+export function SettingsTree({ settings, search, forceExpand, aiCache, setAiCache, statusMap, setStatusMap }: SettingsTreeProps) {
   const filtered = useMemo(() => {
     if (!search) return settings;
     const q = search.toLowerCase();
@@ -362,7 +465,7 @@ export function SettingsTree({ settings, search, forceExpand, aiCache, setAiCach
       {Array.from(tree.children.values())
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((child) => (
-          <TreeBranch key={child.path} node={child} depth={0} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} />
+          <TreeBranch key={child.path} node={child} depth={0} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
         ))}
     </div>
   );
