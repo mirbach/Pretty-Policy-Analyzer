@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { useGPOs } from '../hooks/useApi';
 import { getGPO } from '../lib/api';
+import { exportMigrationReport, type MigrationReportRow } from '../lib/exportExcel';
 import type { PolicySetting } from '../types/gpo';
 import {
   gpoStatusKey,
@@ -10,19 +11,11 @@ import {
   type MigrationStatus,
   type MigrationStatusStore,
 } from '../lib/migrationStatus';
-import { ListChecks, Search, Loader, CheckCircle2, XCircle, Circle, AlertTriangle } from 'lucide-react';
+import { ListChecks, Search, Loader, CheckCircle2, XCircle, Circle, AlertTriangle, FileDown } from 'lucide-react';
 
 type FilterTab = 'all' | MigrationStatus;
 
-interface ReportRow {
-  gpoName: string;
-  scope: string;
-  category: string;
-  displayName: string;
-  state: string;
-  status: MigrationStatus;
-  reason?: string;
-}
+type ReportRow = MigrationReportRow;
 
 const STATUS_BADGE: Record<MigrationStatus, { icon: typeof CheckCircle2; className: string }> = {
   not_migrated: { icon: Circle, className: 'text-surface-400' },
@@ -36,6 +29,9 @@ function settingRow(s: PolicySetting, gpoName: string, status: MigrationStatus, 
     scope: s.scope,
     category: s.category,
     displayName: s.display_name || s.value_name || s.key_path,
+    keyPath: s.key_path,
+    valueName: s.value_name,
+    value: s.value_display || String(s.value ?? ''),
     state: s.state,
     status,
     reason,
@@ -50,6 +46,8 @@ export function MigrationReportView({ migrationStatusStore }: Props) {
   const { data: gpoList, isLoading: gposLoading } = useGPOs();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [search, setSearch] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const gpoQueries = useQueries({
     queries: (gpoList ?? []).map((info) => ({
@@ -102,14 +100,43 @@ export function MigrationReportView({ migrationStatusStore }: Props) {
 
   const isLoading = gposLoading || detailsLoading;
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await exportMigrationReport(rows);
+    } catch (err: any) {
+      console.error('Migration report export failed:', err);
+      setExportError(err?.message ?? 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 shrink-0">
-        <h2 className="text-xl font-bold text-surface-800 dark:text-surface-200 flex items-center gap-2 mb-3">
-          <ListChecks size={20} className="text-blue-600" />
-          Intune Migration Report
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-bold text-surface-800 dark:text-surface-200 flex items-center gap-2">
+            <ListChecks size={20} className="text-blue-600" />
+            Intune Migration Report
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={isExporting || totalCount === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
+              title="Export the full migration report to Excel"
+            >
+              <FileDown size={16} />
+              {isExporting ? 'Exporting…' : 'Export'}
+            </button>
+            {exportError && (
+              <span className="text-xs text-red-500" title={exportError}>Export failed</span>
+            )}
+          </div>
+        </div>
 
         <div className="relative max-w-md">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-400" />

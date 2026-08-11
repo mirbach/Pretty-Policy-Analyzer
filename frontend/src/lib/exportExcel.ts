@@ -1,6 +1,8 @@
 import ExcelJS from 'exceljs';
 import { getGPO } from './api';
+import { downloadBlobFile } from './download';
 import type { GPOInfo, PolicySetting } from '../types/gpo';
+import { MIGRATION_STATUS_LABELS, type MigrationStatus } from './migrationStatus';
 
 function settingToRow(s: PolicySetting, gpoName?: string) {
   return {
@@ -94,13 +96,61 @@ export async function exportSelectedGPOs(gpoIds: string[]): Promise<void> {
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `GPO_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Delay revoke so the browser has time to start the download
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  downloadBlobFile(blob, `GPO_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export interface MigrationReportRow {
+  gpoName: string;
+  scope: string;
+  category: string;
+  displayName: string;
+  keyPath: string;
+  valueName: string;
+  value: string;
+  state: string;
+  status: MigrationStatus;
+  reason?: string;
+}
+
+function migrationRowToXlsxRow(r: MigrationReportRow) {
+  return {
+    GPO: r.gpoName,
+    Scope: r.scope,
+    Category: r.category,
+    Setting: r.displayName,
+    'Key Path': r.keyPath,
+    'Value Name': r.valueName,
+    Value: r.value,
+    State: r.state,
+    'Migration Status': MIGRATION_STATUS_LABELS[r.status],
+    Reason: r.reason ?? '',
+  };
+}
+
+export async function exportMigrationReport(rows: MigrationReportRow[]): Promise<void> {
+  const wb = new ExcelJS.Workbook();
+
+  const total = rows.length;
+  const migrated = rows.filter((r) => r.status === 'migrated').length;
+  const wontMigrate = rows.filter((r) => r.status === 'wont_migrate').length;
+  const notMigrated = total - migrated - wontMigrate;
+  const reasonMissing = rows.filter((r) => r.status === 'wont_migrate' && !r.reason).length;
+  const migratedPct = total > 0 ? Math.round((migrated / total) * 100) : 0;
+
+  addSheetFromRows(wb, 'Summary', [{
+    'Total Settings': total,
+    Migrated: migrated,
+    '% Migrated': migratedPct,
+    'Not Migrated': notMigrated,
+    "Won't Migrate": wontMigrate,
+    "Won't Migrate — Missing Reason": reasonMissing,
+  }]);
+
+  addSheetFromRows(wb, 'Migration Report', rows.map(migrationRowToXlsxRow));
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  downloadBlobFile(blob, `Migration_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
