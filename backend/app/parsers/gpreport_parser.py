@@ -56,9 +56,22 @@ def _parse_registry_policies(extension: etree._Element, scope: PolicyScope) -> l
             el = policy.find(f"{{{REGISTRY_NS}}}{tag}")
             if el is not None:
                 sub_name = _text(el.find(f"{{{REGISTRY_NS}}}Name")) or tag
-                val = _text(el.find(f"{{{REGISTRY_NS}}}Value")) or _text(el) or el.get("State", "")
+                if tag == "ListBox":
+                    # ListBox values are a list of <Element><Data>...</Data></Element> entries
+                    # rather than a single text node.
+                    value_el = el.find(f"{{{REGISTRY_NS}}}Value")
+                    items: list[str] = []
+                    if value_el is not None:
+                        for item in value_el:
+                            data_el = item.find(f"{{{REGISTRY_NS}}}Data")
+                            text_val = _text(data_el) if data_el is not None else _text(item)
+                            if text_val:
+                                items.append(text_val)
+                    val = ", ".join(items)
+                else:
+                    val = _text(el.find(f"{{{REGISTRY_NS}}}Value")) or _text(el) or el.get("State", "")
                 if not val:
-                    # For CheckBox, the State attribute holds the value
+                    # For CheckBox/empty ListBox, the State attribute holds the value
                     val = _text(el.find(f"{{{REGISTRY_NS}}}State")) or ""
                 sub_values[sub_name] = val
 

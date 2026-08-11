@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { PolicySetting } from '../types/gpo';
 import { ChevronRight, ChevronDown, Sparkles } from 'lucide-react';
 import { loadAIConfig, callAI } from '../lib/aiClient';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { CopyExportToolbar } from './CopyExportToolbar';
 
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => <h1 className="text-sm font-bold text-surface-800 dark:text-surface-200 mt-3 mb-1">{children}</h1>,
@@ -183,6 +184,8 @@ function SettingRow({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const aiResponse = aiCache[cacheKey] ?? null;
+  const aiResultRef = useRef<HTMLDivElement>(null);
+  const filenameBase = `Intune_${(s.display_name || s.value_name || s.key_path).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
   useEffect(() => {
     if (forceExpand !== undefined) setExpanded(forceExpand.value);
@@ -293,11 +296,21 @@ Be specific and practical.`;
               </div>
             )}
             {aiResponse && (
-              <div className="mt-2 p-3 bg-violet-50 dark:bg-violet-900/20 rounded max-h-[600px] overflow-y-auto">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-                  {aiResponse}
-                </ReactMarkdown>
-              </div>
+              <>
+                <div className="mt-2 flex justify-end">
+                  <CopyExportToolbar
+                    markdown={aiResponse}
+                    targetRef={aiResultRef}
+                    filenameBase={filenameBase}
+                    variant="compact"
+                  />
+                </div>
+                <div ref={aiResultRef} className="mt-1 p-3 bg-violet-50 dark:bg-violet-900/20 rounded max-h-[600px] overflow-y-auto">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+                    {aiResponse}
+                  </ReactMarkdown>
+                </div>
+              </>
             )}
           </div>
         </div>
