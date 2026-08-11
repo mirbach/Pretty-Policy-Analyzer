@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.99.0",
-    "axios": "^1.15.2",
+    "axios": "^1.18.0",
     "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^1.8.0",
