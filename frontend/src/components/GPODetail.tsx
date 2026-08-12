@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useGPO } from '../hooks/useApi';
 import { SettingsTree } from './SettingsTree';
 import { GPOIntuneModal } from './GPOIntuneModal';
-import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
-import { gpoStatusKey, type GpoMigrationStatusMap, type MigrationStatusStore } from '../lib/migrationStatus';
+import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles, CheckCircle2, XCircle, Circle } from 'lucide-react';
+import { gpoStatusKey, type GpoMigrationStatusMap, type MigrationStatus, type MigrationStatusStore } from '../lib/migrationStatus';
 
 type AiCache = Record<string, string>;
 
@@ -20,6 +20,9 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
   const [search, setSearch] = useState('');
   const [forceExpand, setForceExpand] = useState<{ value: boolean; seq: number } | undefined>(undefined);
   const [showIntuneModal, setShowIntuneModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<MigrationStatus | null>(null);
+  const toggleStatusFilter = (status: MigrationStatus) =>
+    setStatusFilter((prev) => (prev === status ? null : status));
 
   const handleExpandAll = () => setForceExpand((prev) => ({ value: true, seq: (prev?.seq ?? 0) + 1 }));
   const handleCollapseAll = () => setForceExpand((prev) => ({ value: false, seq: (prev?.seq ?? 0) + 1 }));
@@ -41,6 +44,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
 
   const migratedCount = Object.values(statusMap).filter((e) => e.status === 'migrated').length;
   const wontMigrateCount = Object.values(statusMap).filter((e) => e.status === 'wont_migrate').length;
+  const notMigratedCount = settings.length - migratedCount - wontMigrateCount;
 
   return (
     <div className="h-full flex flex-col">
@@ -68,12 +72,47 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
           <span className="flex items-center gap-1">
             <Shield size={12} /> {info.setting_count} settings
           </span>
-          <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+          <button
+            type="button"
+            onClick={() => toggleStatusFilter('migrated')}
+            className={`flex items-center gap-1 rounded px-1 -mx-1 text-green-600 dark:text-green-400 transition-colors ${
+              statusFilter === 'migrated' ? 'bg-green-100 dark:bg-green-900/40 ring-1 ring-green-400' : 'hover:bg-green-50 dark:hover:bg-green-900/20'
+            }`}
+            title="Show only migrated settings"
+          >
             <CheckCircle2 size={12} /> {migratedCount} migrated
-          </span>
-          <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStatusFilter('wont_migrate')}
+            className={`flex items-center gap-1 rounded px-1 -mx-1 text-amber-600 dark:text-amber-400 transition-colors ${
+              statusFilter === 'wont_migrate' ? 'bg-amber-100 dark:bg-amber-900/40 ring-1 ring-amber-400' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20'
+            }`}
+            title="Show only settings that won't migrate"
+          >
             <XCircle size={12} /> {wontMigrateCount} won't migrate
-          </span>
+          </button>
+          {notMigratedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => toggleStatusFilter('not_migrated')}
+              className={`flex items-center gap-1 rounded px-1 -mx-1 text-red-600 dark:text-red-400 transition-colors ${
+                statusFilter === 'not_migrated' ? 'bg-red-100 dark:bg-red-900/40 ring-1 ring-red-400' : 'hover:bg-red-50 dark:hover:bg-red-900/20'
+              }`}
+              title="Show only settings not yet migrated"
+            >
+              <Circle size={12} /> {notMigratedCount} not migrated
+            </button>
+          )}
+          {statusFilter && (
+            <button
+              type="button"
+              onClick={() => setStatusFilter(null)}
+              className="flex items-center gap-1 text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors"
+            >
+              × Clear filter
+            </button>
+          )}
           <span className="flex items-center gap-1">
             <Monitor size={12} /> Computer: {info.computer_enabled ? 'Enabled' : 'Disabled'}
             {info.computer_version > 0 && ` (v${info.computer_version})`}
@@ -136,7 +175,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
 
       {/* Settings tree */}
       <div className="flex-1 overflow-y-auto">
-        <SettingsTree settings={settings} search={search} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
+        <SettingsTree settings={settings} search={search} statusFilter={statusFilter} forceExpand={forceExpand} aiCache={aiCache} setAiCache={setAiCache} statusMap={statusMap} setStatusMap={setStatusMap} />
       </div>
 
       {showIntuneModal && (

@@ -3,6 +3,7 @@ import { useGPOs } from '../hooks/useApi';
 import { useDeleteGPO } from '../hooks/useApi';
 import { Search, CheckSquare, Square, Shield, Monitor, User, Activity, ChevronDown, ChevronRight, X } from 'lucide-react';
 import type { GPOInfo } from '../types/gpo';
+import { gpoStatusKey, type MigrationStatusStore } from '../lib/migrationStatus';
 
 interface GPOListProps {
   selectedId: string | null;
@@ -10,9 +11,10 @@ interface GPOListProps {
   onSelect: (id: string) => void;
   onCompareToggle: (id: string) => void;
   onSelectAll: (ids: string[]) => void;
+  migrationStatusStore: MigrationStatusStore;
 }
 
-export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onSelectAll }: GPOListProps) {
+export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onSelectAll, migrationStatusStore }: GPOListProps) {
   const [search, setSearch] = useState('');
   const [effectiveOpen, setEffectiveOpen] = useState(true);
   const [backupsOpen, setBackupsOpen] = useState(true);
@@ -34,7 +36,13 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
     }
   };
 
-  const renderRow = (gpo: GPOInfo) => (
+  const renderRow = (gpo: GPOInfo) => {
+    const statusMap = migrationStatusStore[gpoStatusKey(gpo)] ?? {};
+    const migratedCount = Object.values(statusMap).filter((e) => e.status === 'migrated').length;
+    const wontMigrateCount = Object.values(statusMap).filter((e) => e.status === 'wont_migrate').length;
+    const notMigratedCount = gpo.setting_count - migratedCount - wontMigrateCount;
+
+    return (
     <div
       key={gpo.id}
       className={`group flex items-start gap-2 px-3 py-2.5 border-b border-surface-100 dark:border-surface-800 cursor-pointer transition-colors ${
@@ -63,18 +71,30 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
         <div className="text-sm font-medium text-surface-800 dark:text-surface-200 truncate">
           {gpo.display_name}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-surface-400">
-            {gpo.setting_count} settings
-          </span>
-          <div className="flex items-center gap-1">
-            {gpo.computer_enabled && (
-              <Monitor size={10} className="text-blue-400" />
-            )}
-            {gpo.user_enabled && (
-              <User size={10} className="text-green-400" />
-            )}
+        <div className="flex items-center justify-between gap-2 mt-0.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-surface-400 shrink-0">
+              {gpo.setting_count} settings
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              {gpo.computer_enabled && (
+                <Monitor size={10} className="text-blue-400" />
+              )}
+              {gpo.user_enabled && (
+                <User size={10} className="text-green-400" />
+              )}
+            </div>
           </div>
+          {gpo.setting_count > 0 && (
+            <div
+              className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums shrink-0"
+              title={`${migratedCount} migrated, ${wontMigrateCount} won't migrate, ${notMigratedCount} not migrated`}
+            >
+              <span className="text-green-600 dark:text-green-400">{migratedCount}</span>
+              <span className="text-amber-600 dark:text-amber-400">{wontMigrateCount}</span>
+              <span className="text-red-600 dark:text-red-400">{notMigratedCount}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -90,7 +110,8 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
         <X size={14} />
       </button>
     </div>
-  );
+    );
+  };
 
   return (
     <aside className="w-72 border-r border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 flex flex-col shrink-0">

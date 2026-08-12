@@ -113,6 +113,7 @@ export default function App() {
           }}
           onCompareToggle={handleCompareToggle}
           onSelectAll={setCompareIds}
+          migrationStatusStore={migrationStatusStore}
         />
 
         {/* Main content */}

@@ -430,6 +430,7 @@ function countSettings(node: TreeNode): number {
 interface SettingsTreeProps {
   settings: PolicySetting[];
   search?: string;
+  statusFilter?: MigrationStatus | null;
   forceExpand?: { value: boolean; seq: number };
   aiCache: AiCache;
   setAiCache: (updater: (prev: AiCache) => AiCache) => void;
@@ -437,25 +438,31 @@ interface SettingsTreeProps {
   setStatusMap: (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) => void;
 }
 
-export function SettingsTree({ settings, search, forceExpand, aiCache, setAiCache, statusMap, setStatusMap }: SettingsTreeProps) {
+export function SettingsTree({ settings, search, statusFilter, forceExpand, aiCache, setAiCache, statusMap, setStatusMap }: SettingsTreeProps) {
   const filtered = useMemo(() => {
-    if (!search) return settings;
-    const q = search.toLowerCase();
-    return settings.filter(
-      (s) =>
-        s.display_name.toLowerCase().includes(q) ||
-        s.key_path.toLowerCase().includes(q) ||
-        s.value_name.toLowerCase().includes(q) ||
-        String(s.value).toLowerCase().includes(q)
-    );
-  }, [settings, search]);
+    let result = settings;
+    if (statusFilter) {
+      result = result.filter((s) => (statusMap[settingStatusKey(s)]?.status ?? 'not_migrated') === statusFilter);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.display_name.toLowerCase().includes(q) ||
+          s.key_path.toLowerCase().includes(q) ||
+          s.value_name.toLowerCase().includes(q) ||
+          String(s.value).toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [settings, search, statusFilter, statusMap]);
 
   const tree = useMemo(() => buildTree(filtered), [filtered]);
 
   if (filtered.length === 0) {
     return (
       <div className="p-4 text-center text-surface-400 text-sm">
-        {search ? 'No matching settings' : 'No settings'}
+        {search || statusFilter ? 'No matching settings' : 'No settings'}
       </div>
     );
   }
