@@ -7,7 +7,8 @@
 [![Pre-release](https://img.shields.io/github/v/release/mirbach/Pretty-Policy-Analyzer?include_prereleases&label=pre-release&color=orange)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases)
 [![Downloads](https://img.shields.io/github/downloads/mirbach/Pretty-Policy-Analyzer/total)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases)
 [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/latest)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6?logo=data:image/svg%2bxml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmaWxsPSJ3aGl0ZSI+PHRpdGxlPldpbmRvd3M8L3RpdGxlPjxwYXRoIGQ9Ik0wIDMuNTQ1IDkuODE4IDIuMTc0djkuMTRIMFYzLjU0NXpNMTAuOTA5IDIuMDIzIDI0IDB2MTEuMTRIMTAuOTA5VjIuMDIzek0wIDEyLjk1NWg5LjgxOHY5LjE0NkwwIDIwLjczMnYtNy43Nzd6TTEwLjkwOSAxMi45NTVIMjRWMjRsLTEzLjA5MS0xLjg0OXYtOS4xOTZ6Ii8+PC9zdmc+)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/latest)
+[![Platform: Linux (Beta)](https://img.shields.io/badge/platform-Linux%20(Beta)-FCC624?logo=linux&logoColor=black)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/tag/v1.0.5)
 
 <img width="1172" height="506" alt="Screenshot 2026-04-21 105355" src="https://github.com/user-attachments/assets/d90ff35a-dbfd-4817-9d17-48adaf451777" />
 
