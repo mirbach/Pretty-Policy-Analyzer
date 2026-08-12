@@ -17,7 +17,7 @@ A desktop/web app for security engineers and Active Directory administrators to 
 
 <div align="center">
 
-[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmaWxsPSJ3aGl0ZSI+PHRpdGxlPldpbmRvd3M8L3RpdGxlPjxwYXRoIGQ9Ik0wIDMuNTQ1IDkuODE4IDIuMTc0djkuMTRIMFYzLjU0NXpNMTAuOTA5IDIuMDIzIDI0IDB2MTEuMTRIMTAuOTA5VjIuMDIzek0wIDEyLjk1NWg5LjgxOHY5LjE0NkwwIDIwLjczMnYtNy43Nzd6TTEwLjkwOSAxMi45NTVIMjRWMjRsLTEzLjA5MS0xLjg0OXYtOS4xOTZ6Ii8+PC9zdmc+)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/latest)
 [![Download for Linux (Beta)](https://img.shields.io/badge/Download-Linux%20(Beta)-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/tag/v1.0.5)
 
 </div>
