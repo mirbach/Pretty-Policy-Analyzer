@@ -15,6 +15,13 @@ A desktop/web app for security engineers and Active Directory administrators to 
 
 </div>
 
+<div align="center">
+
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/latest)
+[![Download for Linux (Beta)](https://img.shields.io/badge/Download-Linux%20(Beta)-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/mirbach/Pretty-Policy-Analyzer/releases/tag/v1.0.5)
+
+</div>
+
 ---
 
 ## Features
