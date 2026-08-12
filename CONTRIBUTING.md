@@ -3,6 +3,9 @@
 Thanks for your interest in improving Pretty Policy Analyzer! Bug reports,
 feature requests, and pull requests are all welcome.
 
+Participation in this project is governed by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Reporting Bugs / Requesting Features
 
 Search [existing issues](../../issues) first to avoid duplicates, then open a

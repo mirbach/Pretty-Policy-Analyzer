@@ -1,4 +1,8 @@
 # Pretty Policy Analyzer
+
+[![Build](https://github.com/mirbach/Pretty-Policy-Analyzer/actions/workflows/build.yml/badge.svg)](https://github.com/mirbach/Pretty-Policy-Analyzer/actions/workflows/build.yml)
+[![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue.svg)](LICENSE)
+
 <img width="1172" height="506" alt="Screenshot 2026-04-21 105355" src="https://github.com/user-attachments/assets/d90ff35a-dbfd-4817-9d17-48adaf451777" />
 
 A desktop/web app for security engineers and Active Directory administrators to load, browse, compare, audit, and baseline-check Group Policy Object (GPO) backups — without needing a domain controller.
