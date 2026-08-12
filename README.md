@@ -146,6 +146,9 @@ Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyCont
 
 ## Building the Electron App
 
+> The steps below cover the Windows build. For Linux (AppImage/deb/rpm,
+> including a WSL2 setup guide) and macOS, see [BUILDING.md](BUILDING.md).
+
 ### Step 1 — Build all artefacts
 
 The `build` script compiles the frontend, transpiles the Electron TypeScript, and bundles the Python backend with PyInstaller:

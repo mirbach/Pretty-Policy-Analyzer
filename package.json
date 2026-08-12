@@ -2,7 +2,10 @@
   "name": "pretty-policy-analyzer",
   "version": "1.0.4",
   "description": "Pretty Policy Analyzer Setup",
-  "author": "Pretty Policy Analyzer",
+  "author": {
+    "name": "Pretty Policy Analyzer",
+    "email": "ppa.ydoqw@simplelogin.com"
+  },
   "license": "0BSD",
   "main": "dist-electron/main.js",
   "scripts": {
