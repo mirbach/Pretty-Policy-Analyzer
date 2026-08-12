@@ -81,7 +81,10 @@
       "target": ["AppImage", "deb", "rpm"],
       "icon": "electron/icon.png",
       "category": "Utility",
-      "executableName": "pretty-policy-analyzer"
+      "executableName": "pretty-policy-analyzer",
+      "desktopName": "pretty-policy-analyzer.desktop",
+      "synopsis": "Pretty Policy Analyzer Setup",
+      "syncDesktopName": true
     }
   }
 }
