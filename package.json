@@ -3,7 +3,7 @@
   "version": "1.0.4",
   "description": "Pretty Policy Analyzer Setup",
   "author": "Pretty Policy Analyzer",
-  "license": "MIT",
+  "license": "0BSD",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:frontend": "cd frontend && npm run dev",
