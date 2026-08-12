@@ -77,6 +77,7 @@ export function MigrationReportView({ migrationStatusStore }: Props) {
   const notMigratedCount = totalCount - migratedCount - wontMigrateCount;
   const reasonMissingCount = wontMigrateRows.filter((r) => !r.reason).length;
   const migratedPct = totalCount > 0 ? Math.round((migratedCount / totalCount) * 100) : 0;
+  const progressPct = totalCount > 0 ? Math.round(((migratedCount + wontMigrateCount) / totalCount) * 100) : 0;
 
   const filterItems = (items: ReportRow[]) => {
     if (!search) return items;
@@ -178,13 +179,20 @@ export function MigrationReportView({ migrationStatusStore }: Props) {
               </span>
               <span
                 className="ml-auto text-sm font-bold"
-                style={{ color: migratedPct >= 80 ? '#4ade80' : migratedPct >= 50 ? '#fbbf24' : '#f87171' }}
+                style={{ color: progressPct >= 80 ? '#4ade80' : progressPct >= 50 ? '#fbbf24' : '#f87171' }}
               >
-                {migratedPct}% migrated
+                {progressPct}% complete
               </span>
             </div>
-            <div className="h-2 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
-              <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${migratedPct}%` }} />
+            <div className="relative h-2 rounded-full bg-red-500 overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 bg-amber-500 transition-all"
+                style={{ width: `${progressPct}%` }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 bg-green-500 transition-all"
+                style={{ width: `${migratedPct}%` }}
+              />
             </div>
             {reasonMissingCount > 0 && (
               <div className="mt-2 flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400">
