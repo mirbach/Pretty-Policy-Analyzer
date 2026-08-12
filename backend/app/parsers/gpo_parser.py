@@ -73,18 +73,30 @@ def parse_gpo_folder(folder_path: str) -> GPODetail:
         info = GPOInfo(id=backup_id, display_name=backup_id)
         warnings.append("Could not parse GPO metadata from bkupInfo.xml or gpreport.xml")
 
-    # 3. Parse registry.pol files for detailed registry settings
+    # 3. Parse registry.pol files for detailed registry settings, but only as a
+    # fallback for scopes gpreport.xml didn't cover. gpreport.xml's <q:Policy>
+    # entries use a human-readable category as key_path (not the real registry
+    # path), so they can never dedup-match their registry.pol counterpart —
+    # parsing both unconditionally double-lists every ADMX-resolved setting.
+    registry_covered_scopes = {
+        s.scope
+        for s in gpr_settings
+        if s.setting_type in (SettingType.ADMIN_TEMPLATE, SettingType.REGISTRY)
+    }
+
     sysvol_base = os.path.join(folder_path, "DomainSysvol", "GPO")
 
-    machine_pol = os.path.join(sysvol_base, "Machine", "registry.pol")
-    pol_settings, pol_warnings = parse_registry_pol(machine_pol, PolicyScope.COMPUTER)
-    all_settings.extend(pol_settings)
-    warnings.extend(pol_warnings)
+    if PolicyScope.COMPUTER not in registry_covered_scopes:
+        machine_pol = os.path.join(sysvol_base, "Machine", "registry.pol")
+        pol_settings, pol_warnings = parse_registry_pol(machine_pol, PolicyScope.COMPUTER)
+        all_settings.extend(pol_settings)
+        warnings.extend(pol_warnings)
 
-    user_pol = os.path.join(sysvol_base, "User", "registry.pol")
-    pol_settings, pol_warnings = parse_registry_pol(user_pol, PolicyScope.USER)
-    all_settings.extend(pol_settings)
-    warnings.extend(pol_warnings)
+    if PolicyScope.USER not in registry_covered_scopes:
+        user_pol = os.path.join(sysvol_base, "User", "registry.pol")
+        pol_settings, pol_warnings = parse_registry_pol(user_pol, PolicyScope.USER)
+        all_settings.extend(pol_settings)
+        warnings.extend(pol_warnings)
 
     # 4. Parse GptTmpl.inf for security settings
     inf_path = os.path.join(sysvol_base, "Machine", "microsoft", "windows nt", "SecEdit", "GptTmpl.inf")
