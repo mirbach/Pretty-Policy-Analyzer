@@ -71,6 +71,15 @@ The **Baseline** view compares all loaded GPOs against one or more Microsoft Sec
   - Microsoft 365 Apps for Enterprise 2512
   - Microsoft Edge v139 Security Baseline
 
+### Intune Migration Tracking
+Track the progress of migrating on-prem GPOs to Microsoft Intune:
+
+- **Per-setting status** — in the settings tree, mark each setting as **Not Migrated**, **Migrated**, or **Won't Migrate** (the latter requires a reason, e.g. "domain-specific, no Intune equivalent"). Status is tracked per stable AD GPO GUID, so it survives re-exporting/rescanning the same GPO.
+- **Migration Report view** — a dedicated dashboard (toolbar → **Migration**) aggregating status across every loaded GPO: a completion progress bar, filterable tabs (All / Migrated / Not Migrated / Won't Migrate), free-text search, and a warning badge for "Won't Migrate" entries still missing a reason.
+- **Export** — download the full migration report as an Excel spreadsheet for status reporting.
+- **AI-generated Intune mapping** — from a GPO's **Explain & Intune Migration** action, generate a Markdown table of equivalent Intune Settings Catalog / OMA-URI mappings, or export a ready-to-import **Intune JSON** file (Microsoft Graph `windows10CustomConfiguration` Custom OMA-URI profiles). Large GPOs are processed in batches; settings without a direct Intune equivalent are listed separately with a reason instead of a guessed mapping.
+- **Backup/restore** — migration status is included alongside GPOs and the AI cache in the app's backup/restore feature (see the Backup/Restore icons in the toolbar).
+
 ### Export to Excel
 Select GPOs for comparison, then use the **Export** button to download a formatted Excel spreadsheet (`.xlsx`) with all selected GPO settings for offline review or compliance evidence collection.
 
