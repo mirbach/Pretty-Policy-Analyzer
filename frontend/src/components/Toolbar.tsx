@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useScanFolder, useScanUpload, useClear, useImportLocalPolicy } from '../hooks/useApi';
 import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
@@ -26,6 +26,8 @@ import {
   ListChecks,
   Archive,
   ArchiveRestore,
+  Menu,
+  X,
 } from 'lucide-react';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
@@ -90,6 +92,8 @@ export function Toolbar({
   const [backupError, setBackupError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
   const clearMutation = useClear();
@@ -164,6 +168,21 @@ export function Toolbar({
       setShowFolderInput(false);
     }
   };
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
+  const hasPending = isPending || isBackingUp || isRestoring;
+  const hasError = !!(importError || backupError || restoreError);
+
+  const menuItemClass =
+    'w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-surface-100 dark:hover:bg-surface-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
 
   const navItems: { view: View; icon: typeof LayoutDashboard; label: string }[] = [
     { view: 'detail', icon: LayoutDashboard, label: 'Browse' },
@@ -267,94 +286,118 @@ export function Toolbar({
             <button onClick={() => setShowFolderInput(false)} className="px-2 py-1 text-xs text-surface-400 hover:text-surface-600">Cancel</button>
           </div>
         ) : (
-          <>
-            <span>{status.gpo_count} GPOs | {status.total_settings} settings</span>
-            <button onClick={handleRescan} disabled={isPending} className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded" title="Rescan folder">
-              <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
-            </button>
-            <button onClick={handleChangeFolder} disabled={isPending} className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded" title="Change folder">
-              <FolderOpen size={14} />
-            </button>
-            <button
-              onClick={() => {
-                setImportError(null);
-                importLocalMutation.mutate(undefined, {
-                  onError: (err: any) => {
-                    setImportError(err?.response?.data?.detail ?? err?.message ?? 'Import failed');
-                  },
-                });
-              }}
-              disabled={isPending}
-              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-              title="Import effective policy from this machine (runs gpresult)"
-            >
-              <Monitor size={14} className={importLocalMutation.isPending ? 'animate-pulse text-blue-500' : ''} />
-            </button>
-            {importLocalMutation.isPending && (
-              <span className="text-xs text-blue-500 animate-pulse">Collecting policy…</span>
-            )}
-            {!importLocalMutation.isPending && importError && (
-              <span className="text-xs text-red-500 max-w-[160px] truncate" title={importError}>
-                {importError}
-              </span>
-            )}
-            <button
-              onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending}
-              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-surface-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-              title="Clear data / Start over"
-            >
-              <Trash2 size={14} />
-            </button>
-            <button
-              onClick={handleBackup}
-              disabled={isBackingUp}
-              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-              title="Backup all GPOs, AI cache, and migration status to a file"
-            >
-              <Archive size={14} className={isBackingUp ? 'animate-pulse' : ''} />
-            </button>
-            <button
-              onClick={handleRestore}
-              disabled={isRestoring}
-              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-              title="Restore GPOs, AI cache, and migration status from a backup file"
-            >
-              <ArchiveRestore size={14} className={isRestoring ? 'animate-pulse' : ''} />
-            </button>
-            {backupError && (
-              <span className="text-xs text-red-500 max-w-[160px] truncate" title={backupError}>
-                {backupError}
-              </span>
-            )}
-            {restoreError && (
-              <span className="text-xs text-red-500 max-w-[160px] truncate" title={restoreError}>
-                {restoreError}
-              </span>
-            )}
-          </>
+          <span>{status.gpo_count} GPOs | {status.total_settings} settings</span>
         )}
-        <button
-          onClick={onToggleDark}
-          className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDark ? <Sun size={14} /> : <Moon size={14} />}
-        </button>
-        <button
-          onClick={() => setShowAISettings(true)}
-          className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-          title="AI Settings"
-        >
-          <Settings size={14} />
-        </button>
-        <button
-          onClick={() => setShowAbout(true)}
-          className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
-          title="About"
-        >
-          <Info size={14} />
-        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu((v) => !v)}
+            className="relative p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+            title="Menu"
+          >
+            {showMenu ? <X size={16} /> : <Menu size={16} />}
+            {!showMenu && (hasError || hasPending) && (
+              <span
+                className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${
+                  hasError ? 'bg-red-500' : 'bg-blue-500 animate-pulse'
+                }`}
+              />
+            )}
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 py-1 text-surface-700 dark:text-surface-300">
+              <button
+                onClick={() => { setShowMenu(false); handleRescan(); }}
+                disabled={isPending}
+                className={menuItemClass}
+              >
+                <RefreshCw size={15} className={isPending ? 'animate-spin' : ''} />
+                Rescan folder
+              </button>
+              <button
+                onClick={() => { setShowMenu(false); handleChangeFolder(); }}
+                disabled={isPending}
+                className={menuItemClass}
+              >
+                <FolderOpen size={15} />
+                Change folder
+              </button>
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  setImportError(null);
+                  importLocalMutation.mutate(undefined, {
+                    onError: (err: any) => {
+                      setImportError(err?.response?.data?.detail ?? err?.message ?? 'Import failed');
+                    },
+                  });
+                }}
+                disabled={isPending}
+                className={menuItemClass}
+                title="Import effective policy from this machine (runs gpresult)"
+              >
+                <Monitor size={15} />
+                Import from this machine
+              </button>
+
+              <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+
+              <button onClick={() => { setShowMenu(false); handleBackup(); }} disabled={isBackingUp} className={menuItemClass}>
+                <Archive size={15} className={isBackingUp ? 'animate-pulse' : ''} />
+                Backup data
+              </button>
+              <button onClick={() => { setShowMenu(false); handleRestore(); }} disabled={isRestoring} className={menuItemClass}>
+                <ArchiveRestore size={15} className={isRestoring ? 'animate-pulse' : ''} />
+                Restore backup
+              </button>
+
+              <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+
+              <button
+                onClick={() => { setShowMenu(false); clearMutation.mutate(); }}
+                disabled={clearMutation.isPending}
+                className={`${menuItemClass} text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20`}
+              >
+                <Trash2 size={15} />
+                Clear data / start over
+              </button>
+
+              <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+
+              <button onClick={() => { setShowMenu(false); onToggleDark(); }} className={menuItemClass}>
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              </button>
+              <button onClick={() => { setShowMenu(false); setShowAISettings(true); }} className={menuItemClass}>
+                <Settings size={15} />
+                AI settings
+              </button>
+              <button onClick={() => { setShowMenu(false); setShowAbout(true); }} className={menuItemClass}>
+                <Info size={15} />
+                About
+              </button>
+
+              {(importError || backupError || restoreError) && (
+                <>
+                  <div className="my-1 border-t border-surface-200 dark:border-surface-700" />
+                  {importError && (
+                    <div className="px-3 py-1 text-xs text-red-500 truncate" title={importError}>{importError}</div>
+                  )}
+                  {backupError && (
+                    <div className="px-3 py-1 text-xs text-red-500 truncate" title={backupError}>{backupError}</div>
+                  )}
+                  {restoreError && (
+                    <div className="px-3 py-1 text-xs text-red-500 truncate" title={restoreError}>{restoreError}</div>
+                  )}
+                </>
+              )}
+              {importLocalMutation.isPending && (
+                <div className="px-3 py-1 text-xs text-blue-500 animate-pulse">Collecting policy…</div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       {showAISettings && <AISettingsModal onClose={() => setShowAISettings(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
