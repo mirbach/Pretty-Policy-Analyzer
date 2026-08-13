@@ -73,6 +73,7 @@ The **Baseline** view compares all loaded GPOs against one or more Microsoft Sec
 
 ### Intune Migration Tracking
 Track the progress of migrating on-prem GPOs to Microsoft Intune:
+<img width="2868" height="406" alt="image" src="https://github.com/user-attachments/assets/dde10583-82eb-464b-abbf-fed0c6836712" />
 
 - **Per-setting status** — in the settings tree, mark each setting as **Not Migrated**, **Migrated**, or **Won't Migrate** (the latter requires a reason, e.g. "domain-specific, no Intune equivalent"). Status is tracked per stable AD GPO GUID, so it survives re-exporting/rescanning the same GPO.
 - **Migration Report view** — a dedicated dashboard (toolbar → **Migration**) aggregating status across every loaded GPO: a completion progress bar, filterable tabs (All / Migrated / Not Migrated / Won't Migrate), free-text search, and a warning badge for "Won't Migrate" entries still missing a reason.
