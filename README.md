@@ -41,8 +41,14 @@ Enter your API key once via the Settings icon (top-right). Explanations are cach
 ### Side-by-Side Compare
 Select two or more GPOs using the checkboxes in the sidebar, then click **Compare** to open a side-by-side diff view. Settings that differ between policies are highlighted. Changed, added, and removed settings are each shown in distinct colours.
 
+<img width="1854" height="1496" alt="image" src="https://github.com/user-attachments/assets/69c0d0de-8b4d-4ac0-9ba4-1f7ef85a9c4c" />
+
+
 ### Conflict Detection
 The **Conflicts** view automatically finds settings that are configured in more than one GPO with different values — the exact conflicts a domain would resolve via GPO precedence order. Each conflict shows every GPO that touches the setting and what value each one sets, so you can identify unintended policy overlap at a glance.
+
+<img width="2258" height="1078" alt="image" src="https://github.com/user-attachments/assets/5e4fa2d4-80a5-4056-86f9-e37b47efad85" />
+
 
 ### Global Search
 The **Search** view lets you search every setting name and value across all loaded GPOs simultaneously. Results are grouped by GPO and link directly back to the setting inside its category tree.
