@@ -108,6 +108,32 @@ ipcMain.handle('select-folder', async () => {
   return result.filePaths[0];
 });
 
+// IPC: save/open a full-state backup file
+const BACKUP_DIALOG_FILTERS = [{ name: 'Pretty Policy Analyzer Backup', extensions: ['ppabackup', 'json'] }];
+
+ipcMain.handle('save-backup-file', async (_event, content: string, suggestedName: string) => {
+  if (!mainWindow) return null;
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Backup',
+    defaultPath: suggestedName,
+    filters: BACKUP_DIALOG_FILTERS,
+  });
+  if (result.canceled || !result.filePath) return null;
+  fs.writeFileSync(result.filePath, content, 'utf-8');
+  return result.filePath;
+});
+
+ipcMain.handle('open-backup-file', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Restore from Backup',
+    properties: ['openFile'],
+    filters: BACKUP_DIALOG_FILTERS,
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return fs.readFileSync(result.filePaths[0], 'utf-8');
+});
+
 // IPC: save AI config — API key is encrypted with OS credential store via safeStorage
 const AI_CONFIG_PATH = path.join(app.getPath('userData'), 'ai-config.json');
 

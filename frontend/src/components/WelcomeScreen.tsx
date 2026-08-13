@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useScanFolder, useScanUpload, useImportLocalPolicy } from '../hooks/useApi';
 import type { UploadedFileItem } from '../lib/api';
+import { openBackupFile, parseBackupBundle, applyBackupBundle } from '../lib/backup';
 import logo from '../assets/PPALogo.png';
-import { FolderOpen, AlertCircle, ArrowRight, Loader, Monitor } from 'lucide-react';
+import { FolderOpen, AlertCircle, ArrowRight, Loader, Monitor, ArchiveRestore } from 'lucide-react';
 
 /** Recursively collect all files from a FileSystemDirectoryHandle. */
 async function collectFiles(
@@ -35,12 +36,29 @@ export function WelcomeScreen() {
   const [showInput, setShowInput] = useState(false);
   const [folderPath, setFolderPath] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
   const localMutation = useImportLocalPolicy();
 
-  const isPending = scanMutation.isPending || uploadMutation.isPending || isReading || localMutation.isPending;
+  const isPending = scanMutation.isPending || uploadMutation.isPending || isReading || localMutation.isPending || isRestoring;
+
+  const handleRestoreFromBackup = async () => {
+    setRestoreError(null);
+    try {
+      const raw = await openBackupFile();
+      if (!raw) return;
+      const bundle = parseBackupBundle(raw);
+      setIsRestoring(true);
+      await applyBackupBundle(bundle);
+      window.location.reload();
+    } catch (err: any) {
+      setIsRestoring(false);
+      setRestoreError(err?.message ?? 'Restore failed');
+    }
+  };
   const isError = scanMutation.isError || uploadMutation.isError || !!readError;
   const errorMsg =
     readError ||
@@ -165,6 +183,31 @@ export function WelcomeScreen() {
               {localMutation.isPending ? <Loader size={20} className="animate-spin" /> : <Monitor size={20} />}
               {localMutation.isPending ? 'Collecting policy…' : "Scan This Machine's Policies"}
             </button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-surface-200 dark:border-surface-700" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white dark:bg-surface-800 text-surface-400">or</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleRestoreFromBackup}
+              disabled={isPending}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 disabled:bg-surface-400 text-surface-700 dark:text-white rounded-lg transition-colors"
+            >
+              {isRestoring ? <Loader size={20} className="animate-spin" /> : <ArchiveRestore size={20} />}
+              {isRestoring ? 'Restoring…' : 'Restore from Backup'}
+            </button>
+
+            {restoreError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-red-700 dark:text-red-400">{restoreError}</span>
+              </div>
+            )}
 
             {isError && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">

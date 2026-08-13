@@ -27,9 +27,10 @@ from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
 async def lifespan(app: FastAPI):
     """Run startup tasks before the server begins accepting requests."""
     store = get_store()
-    last = store.load_last_folder()
-    if last:
-        store.scan(last)
+    if not store.load_restored_gpos():
+        last = store.load_last_folder()
+        if last:
+            store.scan(last)
     store.load_effective_policy()
     yield
 

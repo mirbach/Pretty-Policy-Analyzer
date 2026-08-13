@@ -14,6 +14,7 @@ from .parsers.gpo_parser import scan_gpo_folder
 CONFIG_DIR = Path.home() / ".pretty-policy-analyzer"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 EFFECTIVE_POLICY_FILE = CONFIG_DIR / "effective_policy.json"
+RESTORED_GPOS_FILE = CONFIG_DIR / "restored_gpos.json"
 
 
 class GPOStore:
@@ -53,6 +54,16 @@ class GPOStore:
 
     def get_gpo(self, gpo_id: str) -> Optional[GPODetail]:
         return self._gpos.get(gpo_id)
+
+    def load_gpos(self, gpos: list[GPODetail]) -> ScanStatus:
+        """Replace all loaded GPOs with a previously-exported set (backup restore)."""
+        self._gpos.clear()
+        self._parse_errors = []
+        for gpo in gpos:
+            self._gpos[gpo.info.id] = gpo
+        self._folder_path = "(restored from backup)"
+        self._save_restored_gpos(gpos)
+        return self.get_status()
 
     def add_or_replace_gpo(self, gpo: GPODetail) -> ScanStatus:
         """Add or replace a single GPO without clearing the rest."""
@@ -96,6 +107,12 @@ class GPOStore:
                 EFFECTIVE_POLICY_FILE.unlink()
         except OSError:
             pass
+        # Clear restored-backup cache
+        try:
+            if RESTORED_GPOS_FILE.exists():
+                RESTORED_GPOS_FILE.unlink()
+        except OSError:
+            pass
         return self.get_status()
 
     def _save_config(self) -> None:
@@ -130,6 +147,36 @@ class GPOStore:
                 self._gpos[gpo.info.id] = gpo
         except Exception:
             pass
+
+    def _save_restored_gpos(self, gpos: list[GPODetail]) -> None:
+        try:
+            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            payload = "[" + ",".join(gpo.model_dump_json() for gpo in gpos) + "]"
+            RESTORED_GPOS_FILE.write_text(payload, encoding="utf-8")
+        except OSError:
+            pass
+
+    def load_restored_gpos(self) -> bool:
+        """Restore a previously-imported backup from disk (called on startup).
+
+        Returns True if a restored bundle was loaded, so callers can skip the
+        normal last-folder rescan (the restored bundle reflects the user's most
+        recent explicit action and takes precedence over it).
+        """
+        try:
+            if not RESTORED_GPOS_FILE.is_file():
+                return False
+            raw_items = json.loads(RESTORED_GPOS_FILE.read_text(encoding="utf-8"))
+            gpos = [GPODetail.model_validate(item) for item in raw_items]
+        except Exception:
+            return False
+        if not gpos:
+            return False
+        self._gpos.clear()
+        for gpo in gpos:
+            self._gpos[gpo.info.id] = gpo
+        self._folder_path = "(restored from backup)"
+        return True
 
     # ── Baseline methods ──────────────────────────────────────────────────────
 

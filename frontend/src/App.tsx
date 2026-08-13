@@ -12,12 +12,11 @@ import { BaselineView } from './components/BaselineView';
 import { MigrationReportView } from './components/MigrationReportView';
 import { initAIConfig } from './lib/aiClient';
 import { loadMigrationStatusStore, MIGRATION_STATUS_STORAGE_KEY, type MigrationStatusStore } from './lib/migrationStatus';
+import { AI_CACHE_STORAGE_KEY } from './lib/storageKeys';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
 
 type AiCache = Record<string, string>;
-
-const AI_CACHE_STORAGE_KEY = 'pretty_policy_analyzer_ai_cache';
 
 function loadPersistedAiCaches(): Record<string, AiCache> {
   try {
@@ -100,6 +99,8 @@ export default function App() {
         onClearCompare={() => setCompareIds([])}
         isDark={isDark}
         onToggleDark={toggleDark}
+        aiCache={allAiCaches}
+        migrationStatusStore={migrationStatusStore}
       />
 
       <div className="flex flex-1 overflow-hidden">

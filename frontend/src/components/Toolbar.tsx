@@ -3,6 +3,8 @@ import { useScanFolder, useScanUpload, useClear, useImportLocalPolicy } from '..
 import type { UploadedFileItem } from '../lib/api';
 import type { ScanStatus } from '../types/gpo';
 import { exportSelectedGPOs } from '../lib/exportExcel';
+import { buildBackupBundle, parseBackupBundle, applyBackupBundle, backupFilename, saveBackupFile, openBackupFile, type AiCacheStore } from '../lib/backup';
+import type { MigrationStatusStore } from '../lib/migrationStatus';
 import { AISettingsModal } from './AISettingsModal';
 import { AboutModal } from './AboutModal';
 import logo from '../assets/PPALogo.png';
@@ -22,6 +24,8 @@ import {
   Monitor,
   Info,
   ListChecks,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
@@ -58,6 +62,8 @@ interface ToolbarProps {
   onClearCompare: () => void;
   isDark: boolean;
   onToggleDark: () => void;
+  aiCache: AiCacheStore;
+  migrationStatusStore: MigrationStatusStore;
 }
 
 export function Toolbar({
@@ -70,6 +76,8 @@ export function Toolbar({
   onClearCompare,
   isDark,
   onToggleDark,
+  aiCache,
+  migrationStatusStore,
 }: ToolbarProps) {
   const [showFolderInput, setShowFolderInput] = useState(false);
   const [folderPath, setFolderPath] = useState(status.folder_path);
@@ -78,12 +86,49 @@ export function Toolbar({
   const [showAISettings, setShowAISettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
   const clearMutation = useClear();
   const importLocalMutation = useImportLocalPolicy();
 
   const isPending = scanMutation.isPending || uploadMutation.isPending || importLocalMutation.isPending;
+
+  const handleBackup = async () => {
+    setBackupError(null);
+    setIsBackingUp(true);
+    try {
+      const bundle = await buildBackupBundle(aiCache, migrationStatusStore);
+      await saveBackupFile(JSON.stringify(bundle), backupFilename());
+    } catch (err: any) {
+      setBackupError(err?.message ?? 'Backup failed');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoreError(null);
+    try {
+      const raw = await openBackupFile();
+      if (!raw) return;
+      const bundle = parseBackupBundle(raw);
+      const confirmed = window.confirm(
+        `Restore backup from ${new Date(bundle.exportedAt).toLocaleString()}?\n\nThis replaces all currently loaded GPOs, AI-generated cache, and migration status with the backup's contents.`
+      );
+      if (!confirmed) return;
+      setIsRestoring(true);
+      await applyBackupBundle(bundle);
+      window.location.reload();
+    } catch (err: any) {
+      setRestoreError(err?.message ?? 'Restore failed');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const handleRescan = () => {
     if (status.folder_path) {
@@ -261,6 +306,32 @@ export function Toolbar({
             >
               <Trash2 size={14} />
             </button>
+            <button
+              onClick={handleBackup}
+              disabled={isBackingUp}
+              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+              title="Backup all GPOs, AI cache, and migration status to a file"
+            >
+              <Archive size={14} className={isBackingUp ? 'animate-pulse' : ''} />
+            </button>
+            <button
+              onClick={handleRestore}
+              disabled={isRestoring}
+              className="p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+              title="Restore GPOs, AI cache, and migration status from a backup file"
+            >
+              <ArchiveRestore size={14} className={isRestoring ? 'animate-pulse' : ''} />
+            </button>
+            {backupError && (
+              <span className="text-xs text-red-500 max-w-[160px] truncate" title={backupError}>
+                {backupError}
+              </span>
+            )}
+            {restoreError && (
+              <span className="text-xs text-red-500 max-w-[160px] truncate" title={restoreError}>
+                {restoreError}
+              </span>
+            )}
           </>
         )}
         <button

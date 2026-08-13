@@ -1,4 +1,7 @@
 import type { GPOInfo, PolicySetting } from '../types/gpo';
+import { MIGRATION_STATUS_STORAGE_KEY } from './storageKeys';
+
+export { MIGRATION_STATUS_STORAGE_KEY };
 
 export type MigrationStatus = 'not_migrated' | 'migrated' | 'wont_migrate';
 
@@ -19,8 +22,6 @@ export const MIGRATION_STATUS_LABELS: Record<MigrationStatus, string> = {
   migrated: 'Migrated',
   wont_migrate: "Won't Migrate",
 };
-
-export const MIGRATION_STATUS_STORAGE_KEY = 'pretty_policy_analyzer_migration_status';
 
 /**
  * GPOInfo.id is the backup folder's GUID, regenerated on every re-export of the same

@@ -76,6 +76,16 @@ export async function getGPO(id: string): Promise<GPODetail> {
   return data;
 }
 
+export async function exportGPOs(): Promise<GPODetail[]> {
+  const { data } = await api.get('/api/gpos/export');
+  return data;
+}
+
+export async function importGPOs(gpos: GPODetail[]): Promise<ScanStatus> {
+  const { data } = await api.post('/api/gpos/import', gpos);
+  return data;
+}
+
 export async function getGPOSettings(
   id: string,
   filters?: { scope?: string; setting_type?: string; category?: string; search?: string }

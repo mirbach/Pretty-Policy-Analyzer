@@ -23,6 +23,18 @@ def list_gpos(
     return [g.info for g in gpos]
 
 
+@router.get("/export", response_model=list[GPODetail])
+def export_gpos():
+    """Export all currently loaded GPOs, full detail, for a backup bundle."""
+    return get_store().get_all_gpos()
+
+
+@router.post("/import", response_model=ScanStatus)
+def import_gpos(gpos: list[GPODetail]):
+    """Replace all loaded GPOs with a previously-exported set (backup restore)."""
+    return get_store().load_gpos(gpos)
+
+
 @router.get("/{gpo_id}", response_model=GPODetail)
 def get_gpo(gpo_id: str):
     store = get_store()
