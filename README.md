@@ -91,6 +91,7 @@ Track the progress of migrating on-prem GPOs to Microsoft Intune:
 
   <img width="2868" height="406" alt="image" src="https://github.com/user-attachments/assets/dde10583-82eb-464b-abbf-fed0c6836712" />
 
+
 ### Export to Excel
 Select GPOs for comparison, then use the **Export** button to download a formatted Excel spreadsheet (`.xlsx`) with all selected GPO settings for offline review or compliance evidence collection.
 
