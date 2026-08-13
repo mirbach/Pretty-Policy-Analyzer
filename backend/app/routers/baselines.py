@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..analysis.baseline_checker import check_compliance
 from ..models import BaselineComplianceReport, BaselineStatus, BundledBaseline, GPOInfo, RegisterFolderResponse, ScanByIdRequest, ScanRequest, UploadedFileItem
-from ..parsers._path_utils import safe_resolve_dir
+from ..parsers._path_utils import safe_resolve_dir, safe_resolve_file
 from ..store import get_store, register_folder, lookup_folder
 
 router = APIRouter(prefix="/api/baselines", tags=["baselines"])
@@ -109,10 +109,14 @@ async def upload_baseline(files: list[UploadedFileItem]):
     baseline_dir.mkdir(parents=True, exist_ok=True)
 
     for f in files:
-        parts = Path(f.relative_path.replace("\\", "/")).parts
-        if any(p in ("..", ".") for p in parts) or Path(f.relative_path).is_absolute():
+        # See main.py's scan_upload for why containment-checking the resolved
+        # path is used instead of a token blacklist on the raw path.
+        candidate = baseline_dir / f.relative_path.replace("\\", "/")
+        try:
+            resolved = safe_resolve_file(str(candidate), trusted_root=str(baseline_dir))
+        except ValueError:
             continue
-        file_path = baseline_dir.joinpath(*parts)
+        file_path = Path(resolved)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_bytes(base64.b64decode(f.content_b64))
 

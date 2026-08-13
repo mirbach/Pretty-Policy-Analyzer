@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from fastapi import HTTPException
 from .models import ScanRequest, ScanByIdRequest, RegisterFolderResponse, ScanStatus, UploadedFileItem
-from .parsers._path_utils import safe_resolve_dir
+from .parsers._path_utils import safe_resolve_dir, safe_resolve_file
 from .routers import compare, conflicts, gpos, baselines
 from .store import get_store, register_folder, lookup_folder
 from .parsers.gpresult_parser import parse_gpresult_xml, run_gpresult
@@ -45,7 +45,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # No cookie/session auth exists anywhere in this app, so credentialed
+    # cross-origin requests are never needed. Combining allow_origins=["*"]
+    # with allow_credentials=True would make Starlette reflect the caller's
+    # actual Origin header instead of rejecting it — letting any webpage the
+    # user has open call this loopback API with credentials attached.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -70,6 +75,8 @@ def get_status():
 @app.post("/api/register-folder", response_model=RegisterFolderResponse)
 def register_folder_endpoint(request: ScanRequest):
     """Validate and register a user-supplied folder path; return an opaque ID."""
+    if not request.folder_path:
+        raise HTTPException(status_code=400, detail="folder_path required")
     try:
         safe_path = safe_resolve_dir(request.folder_path)
     except ValueError as exc:
@@ -97,11 +104,15 @@ async def scan_upload(files: list[UploadedFileItem]):
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     for f in files:
-        # Sanitize path to prevent path traversal
-        parts = Path(f.relative_path.replace("\\", "/")).parts
-        if any(p in ("..", ".") for p in parts) or Path(f.relative_path).is_absolute():
+        # Resolve against upload_dir and verify containment (handles ".." components,
+        # absolute/drive-rooted paths, and any other pathlib join quirk uniformly —
+        # a token blacklist on the raw path is not sufficient, see _path_utils.py).
+        candidate = upload_dir / f.relative_path.replace("\\", "/")
+        try:
+            resolved = safe_resolve_file(str(candidate), trusted_root=str(upload_dir))
+        except ValueError:
             continue
-        file_path = upload_dir.joinpath(*parts)
+        file_path = Path(resolved)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_bytes(base64.b64decode(f.content_b64))
 
