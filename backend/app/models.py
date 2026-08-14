@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -20,6 +19,15 @@ class SettingType(str, Enum):
     PRIVILEGE = "Privilege"
     KERBEROS = "Kerberos"
     SYSTEM_ACCESS = "SystemAccess"
+    NETWORK = "Network"
+    FIREWALL = "Firewall"
+    CERTIFICATE = "Certificate"
+    INTERNET_EXPLORER = "InternetExplorer"
+    SOFTWARE_RESTRICTION = "SoftwareRestriction"
+    SOFTWARE_INSTALLATION = "SoftwareInstallation"
+    DNS_POLICY = "DnsPolicy"
+    REMOTE_INSTALLATION = "RemoteInstallation"
+    PREFERENCE = "Preference"
     OTHER = "Other"
 
 

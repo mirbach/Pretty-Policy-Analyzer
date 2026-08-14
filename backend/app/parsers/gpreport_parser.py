@@ -187,6 +187,155 @@ def _parse_security_settings(extension: etree._Element, scope: PolicyScope) -> l
     return settings
 
 
+# ── Generic flattener for extension types without a bespoke parser ────────────
+#
+# Several GPO report extensions (network profiles, certificates, firewall,
+# Group Policy Preferences items, ...) each define their own deeply-nested XML
+# schema. Rather than hand-writing a parser per schema, walk the tree generically
+# and turn every leaf value (element text, or an attribute on a leaf/GPP-style
+# element) into a PolicySetting, using a few pattern special-cases so the
+# result reads naturally instead of as a raw XML dump.
+
+_NOISE_ATTRS = {"clsid", "uid", "changed", "image", "nil", "hidden", "not", "bool"}
+_NAME_HINT_ATTRS = ("name", "Name", "networkName", "SSID", "id")
+
+
+def _local_name(tag: str) -> str:
+    if not isinstance(tag, str):
+        return ""
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def _attrs_local(el: etree._Element) -> dict[str, str]:
+    return {
+        _local_name(k): v
+        for k, v in el.attrib.items()
+        if _local_name(k) not in _NOISE_ATTRS and v
+    }
+
+
+def _is_binary_blob(text: str) -> bool:
+    """Heuristic: long hex-only strings are certificate/binary blobs, not human data."""
+    if len(text) < 120:
+        return False
+    sample = text[:300].replace(" ", "").replace("\n", "")
+    return bool(re.fullmatch(r"[0-9a-fA-F]+", sample))
+
+
+def _member_label(el: etree._Element, tag_name: str, idx: int) -> str:
+    """Best-effort distinguishing label for one of several same-tag siblings."""
+    attrs = _attrs_local(el)
+    for key in _NAME_HINT_ATTRS:
+        if attrs.get(key):
+            return f"{tag_name}({attrs[key]})"
+    for child in el:
+        if isinstance(child.tag, str) and _local_name(child.tag).lower() == "name" and not list(child):
+            text = (child.text or "").strip()
+            if text:
+                return f"{tag_name}({text})"
+    return f"{tag_name}[{idx}]"
+
+
+def _flatten_extension(
+    el: etree._Element,
+    path: list[str],
+    scope: PolicyScope,
+    setting_type: SettingType,
+    out: list[PolicySetting],
+) -> None:
+    def emit(key_path: str, value_name: str, value_text: str) -> None:
+        value_text = (value_text or "").strip()
+        if not value_text:
+            return
+        if _is_binary_blob(value_text):
+            value_text = f"<binary data, {len(value_text) // 2} bytes>"
+        out.append(PolicySetting(
+            key_path=key_path or value_name,
+            value_name=value_name,
+            display_name=value_name,
+            value=value_text,
+            value_display=value_text,
+            setting_type=setting_type,
+            scope=scope,
+            state=SettingState.ENABLED,
+        ))
+
+    children = [c for c in el if isinstance(c.tag, str)]
+    attrs = _attrs_local(el)
+
+    if not children:
+        # Leaf element: its text, or (Group Policy Preferences style) its attributes.
+        text = (el.text or "").strip()
+        if text:
+            emit("\\".join(path[:-1]), path[-1] if path else _local_name(el.tag), text)
+
+        lower_attrs = {k.lower(): v for k, v in attrs.items()}
+        if "key" in lower_attrs and "value" in lower_attrs:
+            # GPP registry-preference item, e.g. <Reg hive="..." key="..." name="..." value="..." />
+            hive = lower_attrs.get("hive", "")
+            key = lower_attrs.get("key", "")
+            reg_path = f"{hive}\\{key}" if hive else key
+            emit(reg_path, lower_attrs.get("name") or _local_name(el.tag), lower_attrs.get("value", ""))
+        else:
+            for attr_name, attr_val in attrs.items():
+                emit("\\".join(path), attr_name, attr_val)
+        return
+
+    # <Name>x</Name><Value>y</Value> pair -> a single "x = y" row.
+    child_by_lower = {_local_name(c.tag).lower(): c for c in children}
+    if len(children) == 2 and "name" in child_by_lower and "value" in child_by_lower:
+        name_el, value_el = child_by_lower["name"], child_by_lower["value"]
+        if not list(name_el) and not list(value_el):
+            emit("\\".join(path), (name_el.text or "").strip() or _local_name(el.tag), (value_el.text or "").strip())
+            return
+
+    # <Setting><Value>x</Value></Setting> wrapper -> collapse into the parent's row.
+    if len(children) == 1 and _local_name(children[0].tag).lower() == "value" and not list(children[0]):
+        emit("\\".join(path[:-1]), path[-1] if path else _local_name(el.tag), (children[0].text or "").strip())
+        return
+
+    # Group same-tag siblings: simple repeated leaves collapse to one comma-joined
+    # row (mirrors how ListBox/MULTI_SZ values are already displayed elsewhere);
+    # structured repeats (e.g. multiple certificates/profiles) recurse individually.
+    groups: dict[str, list[etree._Element]] = {}
+    for c in children:
+        groups.setdefault(_local_name(c.tag), []).append(c)
+
+    for tag_name, members in groups.items():
+        if len(members) >= 2 and all(not list(m) for m in members):
+            texts = [t for t in ((m.text or "").strip() for m in members) if t]
+            if texts:
+                emit("\\".join(path), tag_name, ", ".join(texts))
+            continue
+        for idx, m in enumerate(members, start=1):
+            label = tag_name if len(members) == 1 else _member_label(m, tag_name, idx)
+            _flatten_extension(m, path + [label], scope, setting_type, out)
+
+
+def _parse_generic_extension(
+    extension: etree._Element, scope: PolicyScope, setting_type: SettingType
+) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    _flatten_extension(extension, [], scope, setting_type, settings)
+    return settings
+
+
+# xsi:type substring -> SettingType, for extensions without a bespoke parser.
+GENERIC_EXTENSION_TYPES: list[tuple[str, SettingType]] = [
+    ("WLanSvcSettings", SettingType.NETWORK),
+    ("Dot3SvcSettings", SettingType.NETWORK),
+    ("WindowsFirewallSettings", SettingType.FIREWALL),
+    ("PublicKeySettings", SettingType.CERTIFICATE),
+    ("InternetExplorerSettings", SettingType.INTERNET_EXPLORER),
+    ("SoftwareRestrictionSettings", SettingType.SOFTWARE_RESTRICTION),
+    ("SoftwareInstallationSettings", SettingType.SOFTWARE_INSTALLATION),
+    ("NrptSettings", SettingType.DNS_POLICY),
+    ("RemoteInstallationSettings", SettingType.REMOTE_INSTALLATION),
+    ("InternetSettings", SettingType.PREFERENCE),
+    ("PowerOptionsSettings", SettingType.PREFERENCE),
+]
+
+
 def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting], list[str]]:
     """Parse gpreport.xml and return (GPOInfo, list of settings, warnings)."""
     try:
@@ -292,6 +441,11 @@ def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting
                     settings.extend(_parse_registry_policies(ext_el, scope))
                 elif "SecuritySettings" in xsi_type or ext_el.find(f"{{{SECURITY_NS}}}SecurityOptions") is not None:
                     settings.extend(_parse_security_settings(ext_el, scope))
+                else:
+                    for type_substr, mapped_type in GENERIC_EXTENSION_TYPES:
+                        if type_substr in xsi_type:
+                            settings.extend(_parse_generic_extension(ext_el, scope, mapped_type))
+                            break
             except Exception as e:
                 warnings.append(f"Error parsing extension ({xsi_type}) in {scope.value}: {e}")
 

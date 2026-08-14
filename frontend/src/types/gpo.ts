@@ -1,5 +1,22 @@
 export type PolicyScope = 'Computer' | 'User';
-export type SettingType = 'Registry' | 'Security' | 'AdminTemplate' | 'Audit' | 'Privilege' | 'Kerberos' | 'SystemAccess' | 'Other';
+export type SettingType =
+  | 'Registry'
+  | 'Security'
+  | 'AdminTemplate'
+  | 'Audit'
+  | 'Privilege'
+  | 'Kerberos'
+  | 'SystemAccess'
+  | 'Network'
+  | 'Firewall'
+  | 'Certificate'
+  | 'InternetExplorer'
+  | 'SoftwareRestriction'
+  | 'SoftwareInstallation'
+  | 'DnsPolicy'
+  | 'RemoteInstallation'
+  | 'Preference'
+  | 'Other';
 export type SettingState = 'Enabled' | 'Disabled' | 'NotConfigured';
 export type ConflictSeverity = 'High' | 'Medium' | 'Low';
 

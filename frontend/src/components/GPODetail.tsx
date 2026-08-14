@@ -3,7 +3,7 @@ import { useGPO } from '../hooks/useApi';
 import { SettingsTree } from './SettingsTree';
 import { GPOIntuneModal } from './GPOIntuneModal';
 import { Search, Shield, Clock, Globe, Monitor, User, AlertCircle, ChevronsDownUp, ChevronsUpDown, Sparkles, CheckCircle2, XCircle, Circle } from 'lucide-react';
-import { gpoStatusKey, type GpoMigrationStatusMap, type MigrationStatus, type MigrationStatusStore } from '../lib/migrationStatus';
+import { gpoStatusKey, settingStatusKey, type GpoMigrationStatusMap, type MigrationStatus, type MigrationStatusStore } from '../lib/migrationStatus';
 
 type AiCache = Record<string, string>;
 
@@ -42,8 +42,14 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
   const setStatusMap = (updater: (prev: GpoMigrationStatusMap) => GpoMigrationStatusMap) =>
     setMigrationStatusStore((prev) => ({ ...prev, [gKey]: updater(prev[gKey] ?? {}) }));
 
-  const migratedCount = Object.values(statusMap).filter((e) => e.status === 'migrated').length;
-  const wontMigrateCount = Object.values(statusMap).filter((e) => e.status === 'wont_migrate').length;
+  // statusMap can hold entries for settings that no longer exist under their old key
+  // (e.g. a re-parse changed key_path/value_name) — only count ones matching a current setting.
+  const currentSettingKeys = new Set(settings.map((s) => settingStatusKey(s)));
+  const liveStatusEntries = Object.entries(statusMap)
+    .filter(([key]) => currentSettingKeys.has(key))
+    .map(([, entry]) => entry);
+  const migratedCount = liveStatusEntries.filter((e) => e.status === 'migrated').length;
+  const wontMigrateCount = liveStatusEntries.filter((e) => e.status === 'wont_migrate').length;
   const notMigratedCount = settings.length - migratedCount - wontMigrateCount;
 
   return (
