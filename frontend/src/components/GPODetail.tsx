@@ -122,7 +122,14 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
             {info.user_version > 0 && ` (v${info.user_version})`}
           </span>
           {info.gpo_guid && (
-            <span className="font-mono">{info.gpo_guid}</span>
+            <span className="font-mono" title="The GPO's object GUID in Active Directory">
+              GPO GUID: {info.gpo_guid}
+            </span>
+          )}
+          {info.id && info.id !== info.gpo_guid && (
+            <span className="font-mono" title="The GUID of this specific backup snapshot (changes every time the GPO is backed up)">
+              Backup GUID: {info.id}
+            </span>
           )}
         </div>
 
