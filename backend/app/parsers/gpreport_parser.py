@@ -96,18 +96,20 @@ def _parse_registry_policies(extension: etree._Element, scope: PolicyScope) -> l
     for reg in extension.findall(f"{{{REGISTRY_NS}}}RegistrySetting"):
         key_path = _text(reg.find(f"{{{REGISTRY_NS}}}KeyPath"))
         val_el = reg.find(f"{{{REGISTRY_NS}}}Value")
-        adm = reg.find(f"{{{REGISTRY_NS}}}AdmSetting")
-        if adm is not None:
-            name = _text(adm)
-        else:
-            name = _text(val_el.find(f"{{{REGISTRY_NS}}}Name")) if val_el is not None else ""
+        name = _text(val_el.find(f"{{{REGISTRY_NS}}}Name")) if val_el is not None else ""
+        value_text = ""
+        if val_el is not None:
+            value_text = (
+                _text(val_el.find(f"{{{REGISTRY_NS}}}String"))
+                or _text(val_el.find(f"{{{REGISTRY_NS}}}Number"))
+            )
 
         settings.append(PolicySetting(
             key_path=key_path,
             value_name=name or os.path.basename(key_path),
-            display_name=name or key_path,
-            value=_text(val_el) if val_el is not None else "",
-            value_display=_text(val_el) if val_el is not None else "",
+            display_name=name or os.path.basename(key_path),
+            value=value_text,
+            value_display=value_text,
             setting_type=SettingType.REGISTRY,
             scope=scope,
             state=SettingState.ENABLED,
@@ -169,11 +171,11 @@ def _parse_security_settings(extension: etree._Element, scope: PolicyScope) -> l
         ))
 
     blocked = _text(extension.find(f"{{{SECURITY_NS}}}Blocked"))
-    if blocked:
+    if blocked.lower() == "true":
         settings.append(PolicySetting(
-            key_path="Security\\InheritanceBlocked",
+            key_path="Security\\ExtensionBlocked",
             value_name="Blocked",
-            display_name="Inheritance Blocked",
+            display_name="Security Extension Blocked",
             value=blocked,
             value_display=blocked,
             setting_type=SettingType.SECURITY,

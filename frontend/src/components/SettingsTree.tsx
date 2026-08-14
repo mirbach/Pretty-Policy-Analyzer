@@ -290,10 +290,13 @@ Be specific and practical.`;
           {s.state === 'Enabled' ? '●' : s.state === 'Disabled' ? '○' : '◌'}
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-sm text-surface-800 dark:text-surface-200 truncate">
+          <div className="text-sm text-surface-800 dark:text-surface-200 truncate" title={s.display_name || s.value_name || s.key_path}>
             {s.display_name || s.value_name || s.key_path}
           </div>
-          <div className="text-xs text-surface-500 truncate">
+          <div className="text-xs text-surface-400 dark:text-surface-500 font-mono truncate" title={s.key_path}>
+            {s.key_path}
+          </div>
+          <div className="text-xs text-surface-500 truncate" title={s.value_display || String(s.value ?? '')}>
             {s.value_display || String(s.value ?? '')}
           </div>
         </div>
