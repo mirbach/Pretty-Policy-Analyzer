@@ -79,14 +79,6 @@ export function useGPO(id: string | null) {
   });
 }
 
-export function useGPOSettings(id: string | null, filters?: Record<string, string>) {
-  return useQuery({
-    queryKey: ['gpo-settings', id, filters],
-    queryFn: () => api.getGPOSettings(id!, filters),
-    enabled: !!id,
-  });
-}
-
 export function useCompare(gpoIds: string[]) {
   return useQuery({
     queryKey: ['compare', ...gpoIds],
@@ -134,22 +126,6 @@ export function useLoadBundledBaseline() {
       qc.invalidateQueries({ queryKey: ['baselines'] });
       qc.invalidateQueries({ queryKey: ['baseline-compliance'] });
     },
-  });
-}
-
-export function useUploadBaseline() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (files: UploadedFileItem[]) => api.uploadBaseline(files),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['baselines'] }),
-  });
-}
-
-export function useScanBaseline() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (folderPath: string) => api.scanBaseline(folderPath),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['baselines'] }),
   });
 }
 

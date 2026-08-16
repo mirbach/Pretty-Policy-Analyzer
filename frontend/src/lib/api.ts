@@ -6,7 +6,6 @@ import type {
   ConflictResult,
   ScanStatus,
   SearchResult,
-  PolicySetting,
   BaselineStatus,
   BaselineComplianceReport,
   BundledBaseline,
@@ -86,14 +85,6 @@ export async function importGPOs(gpos: GPODetail[]): Promise<ScanStatus> {
   return data;
 }
 
-export async function getGPOSettings(
-  id: string,
-  filters?: { scope?: string; setting_type?: string; category?: string; search?: string }
-): Promise<PolicySetting[]> {
-  const { data } = await api.get(`/api/gpos/${encodeURIComponent(id)}/settings`, { params: filters });
-  return data;
-}
-
 export async function compareGPOs(gpoIds: string[]): Promise<ComparisonResult> {
   const { data } = await api.post('/api/compare', { gpo_ids: gpoIds });
   return data;
@@ -107,15 +98,6 @@ export async function getConflicts(filters?: { category?: string; severity?: str
 export async function searchAllSettings(query: string): Promise<SearchResult[]> {
   const { data } = await api.get('/api/gpos/search/all', { params: { q: query } });
   return data;
-}
-
-export async function healthCheck(): Promise<boolean> {
-  try {
-    await api.get('/api/health');
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 // ── Baseline API ──────────────────────────────────────────────────────────────
@@ -135,17 +117,6 @@ export async function loadBundledBaseline(name: string): Promise<BaselineStatus>
   return data;
 }
 
-export async function uploadBaseline(files: UploadedFileItem[]): Promise<BaselineStatus> {
-  const { data } = await api.post('/api/baselines/upload', files);
-  return data;
-}
-
-export async function scanBaseline(folderPath: string): Promise<BaselineStatus> {
-  const { data: reg } = await api.post('/api/baselines/register-folder', { folder_path: folderPath });
-  const { data } = await api.post('/api/baselines/scan', { folder_id: reg.folder_id });
-  return data;
-}
-
 export async function clearBaselines(): Promise<BaselineStatus> {
   const { data } = await api.delete('/api/baselines');
   return data;
@@ -155,5 +126,3 @@ export async function getBaselineCompliance(baselineId: string): Promise<Baselin
   const { data } = await api.get(`/api/baselines/${encodeURIComponent(baselineId)}/compliance`);
   return data;
 }
-
-export default api;

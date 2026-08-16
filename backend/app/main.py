@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import base64
 import shutil
-import sys
 import uuid
 from pathlib import Path
 
@@ -13,7 +12,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from fastapi import HTTPException
 from .models import ScanRequest, ScanByIdRequest, RegisterFolderResponse, ScanStatus, UploadedFileItem
