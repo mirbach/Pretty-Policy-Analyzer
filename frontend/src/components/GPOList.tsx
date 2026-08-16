@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGPOs } from '../hooks/useApi';
 import { useDeleteGPO } from '../hooks/useApi';
-import { Search, CheckSquare, Square, Shield, Monitor, User, Activity, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { Search, CheckSquare, Square, Shield, Monitor, User, Activity, ChevronDown, ChevronRight, X, AlertTriangle } from 'lucide-react';
 import type { GPOInfo } from '../types/gpo';
 import { gpoStatusKey, type MigrationStatusStore } from '../lib/migrationStatus';
 
@@ -68,8 +68,16 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
       </button>
 
       <div className="flex-1 min-w-0" onClick={() => onSelect(gpo.id)}>
-        <div className="text-sm font-medium text-surface-800 dark:text-surface-200 truncate">
-          {gpo.display_name}
+        <div className="text-sm font-medium text-surface-800 dark:text-surface-200 truncate flex items-center gap-1">
+          <span className="truncate">{gpo.display_name}</span>
+          {gpo.warning_count > 0 && (
+            <span
+              className="shrink-0 text-amber-500"
+              title={`${gpo.warning_count} parse warning${gpo.warning_count === 1 ? '' : 's'} — this GPO may not be fully shown`}
+            >
+              <AlertTriangle size={12} />
+            </span>
+          )}
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
           <div className="flex items-center gap-2 min-w-0">

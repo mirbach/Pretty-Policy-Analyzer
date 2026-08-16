@@ -15,6 +15,8 @@ GPO_NS = "http://www.microsoft.com/GroupPolicy/Settings"
 TYPES_NS = "http://www.microsoft.com/GroupPolicy/Types"
 REGISTRY_NS = "http://www.microsoft.com/GroupPolicy/Settings/Registry"
 SECURITY_NS = "http://www.microsoft.com/GroupPolicy/Settings/Security"
+AUDIT_NS = "http://www.microsoft.com/GroupPolicy/Settings/Auditing"
+SRPV2_NS = "http://www.microsoft.com/GroupPolicy/Settings/SRPV2"  # AppLocker
 
 NS = {
     "g": GPO_NS,
@@ -187,6 +189,106 @@ def _parse_security_settings(extension: etree._Element, scope: PolicyScope) -> l
     return settings
 
 
+# ── Advanced Audit Policy Configuration ────────────────────────────────────────
+
+_AUDIT_VALUE_LABELS = {
+    "0": "No Auditing",
+    "1": "Success",
+    "2": "Failure",
+    "3": "Success and Failure",
+}
+
+
+def _parse_audit_settings(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    """Parse <q:AuditSetting> entries (Security Settings > Advanced Audit Policy Configuration)."""
+    settings: list[PolicySetting] = []
+    for audit in extension.findall(f"{{{AUDIT_NS}}}AuditSetting"):
+        target = _text(audit.find(f"{{{AUDIT_NS}}}PolicyTarget"))
+        name = _text(audit.find(f"{{{AUDIT_NS}}}SubcategoryName"))
+        guid = _text(audit.find(f"{{{AUDIT_NS}}}SubcategoryGuid"))
+        raw_value = _text(audit.find(f"{{{AUDIT_NS}}}SettingValue"))
+        value_display = _AUDIT_VALUE_LABELS.get(raw_value, raw_value)
+
+        settings.append(PolicySetting(
+            key_path=f"Advanced Audit Policy Configuration\\{target}" if target else "Advanced Audit Policy Configuration",
+            value_name=name or guid,
+            display_name=name or guid,
+            value=value_display,
+            value_display=value_display,
+            setting_type=SettingType.AUDIT,
+            scope=scope,
+            state=SettingState.ENABLED,
+            category="Advanced Audit Policy Configuration",
+        ))
+    return settings
+
+
+# ── AppLocker (Application Control Policies) ───────────────────────────────────
+
+_APPLOCKER_RULE_TAGS = ("FilePublisherRule", "FilePathRule", "FileHashRule")
+
+
+def _applocker_condition_summary(rule: etree._Element) -> str:
+    conditions = rule.find(f"{{{SRPV2_NS}}}Conditions")
+    if conditions is None:
+        return ""
+    parts = []
+    for cond in conditions:
+        if not isinstance(cond.tag, str):
+            continue
+        cond_name = _local_name(cond.tag)
+        attrs = " ".join(f"{k}={v}" for k, v in cond.attrib.items() if v and v != "*")
+        parts.append(f"{cond_name}({attrs})" if attrs else cond_name)
+    return "; ".join(parts)
+
+
+def _parse_applocker(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    """Parse the SRPV2 (AppLocker) extension: per-collection enforcement mode and rules."""
+    settings: list[PolicySetting] = []
+    for collection in extension.findall(f"{{{SRPV2_NS}}}RuleCollection"):
+        coll_type = collection.get("Type", "")
+        key_path = f"AppLocker\\{coll_type}" if coll_type else "AppLocker"
+
+        mode_el = collection.find(f"{{{SRPV2_NS}}}EnforcementMode")
+        mode = _text(mode_el.find(f"{{{SRPV2_NS}}}Mode")) if mode_el is not None else ""
+        if mode:
+            settings.append(PolicySetting(
+                key_path=key_path,
+                value_name="EnforcementMode",
+                display_name=f"{coll_type} Rules Enforcement" if coll_type else "Enforcement",
+                value=mode,
+                value_display=mode,
+                setting_type=SettingType.SOFTWARE_RESTRICTION,
+                scope=scope,
+                state=SettingState.ENABLED,
+                category="AppLocker",
+            ))
+
+        for rule_tag in _APPLOCKER_RULE_TAGS:
+            for rule in collection.findall(f"{{{SRPV2_NS}}}{rule_tag}"):
+                name = rule.get("Name") or rule.get("Id", "")
+                action = rule.get("Action", "")
+                sid = rule.get("UserOrGroupSid", "")
+                condition = _applocker_condition_summary(rule)
+                value_display = f"{action} ({sid})" if sid else action
+                if condition:
+                    value_display = f"{value_display} — {condition}"
+
+                settings.append(PolicySetting(
+                    key_path=key_path,
+                    value_name=name,
+                    display_name=name,
+                    value=value_display,
+                    value_display=value_display,
+                    setting_type=SettingType.SOFTWARE_RESTRICTION,
+                    scope=scope,
+                    state=SettingState.ENABLED,
+                    category="AppLocker",
+                    explain=rule.get("Description", ""),
+                ))
+    return settings
+
+
 # ── Generic flattener for extension types without a bespoke parser ────────────
 #
 # Several GPO report extensions (network profiles, certificates, firewall,
@@ -236,6 +338,13 @@ def _member_label(el: etree._Element, tag_name: str, idx: int) -> str:
     return f"{tag_name}[{idx}]"
 
 
+def _format_field_value(text: str) -> str:
+    text = (text or "").strip()
+    if _is_binary_blob(text):
+        return f"<binary data, {len(text) // 2} bytes>"
+    return text
+
+
 def _flatten_extension(
     el: etree._Element,
     path: list[str],
@@ -244,11 +353,9 @@ def _flatten_extension(
     out: list[PolicySetting],
 ) -> None:
     def emit(key_path: str, value_name: str, value_text: str) -> None:
-        value_text = (value_text or "").strip()
+        value_text = _format_field_value(value_text)
         if not value_text:
             return
-        if _is_binary_blob(value_text):
-            value_text = f"<binary data, {len(value_text) // 2} bytes>"
         out.append(PolicySetting(
             key_path=key_path or value_name,
             value_name=value_name,
@@ -266,8 +373,10 @@ def _flatten_extension(
     if not children:
         # Leaf element: its text, or (Group Policy Preferences style) its attributes.
         text = (el.text or "").strip()
+        text_emitted = False
         if text:
             emit("\\".join(path[:-1]), path[-1] if path else _local_name(el.tag), text)
+            text_emitted = True
 
         lower_attrs = {k.lower(): v for k, v in attrs.items()}
         if "key" in lower_attrs and "value" in lower_attrs:
@@ -276,9 +385,13 @@ def _flatten_extension(
             key = lower_attrs.get("key", "")
             reg_path = f"{hive}\\{key}" if hive else key
             emit(reg_path, lower_attrs.get("name") or _local_name(el.tag), lower_attrs.get("value", ""))
-        else:
-            for attr_name, attr_val in attrs.items():
-                emit("\\".join(path), attr_name, attr_val)
+        elif attrs:
+            # Several attributes on one element describe one object (e.g. a GPP
+            # preference item's Properties) -> one row, not one row per attribute.
+            combined = "; ".join(f"{k}: {_format_field_value(v)}" for k, v in attrs.items())
+            base_label = path[-1] if path else _local_name(el.tag)
+            label = f"{base_label} (attributes)" if text_emitted else base_label
+            emit("\\".join(path[:-1]), label, combined)
         return
 
     # <Name>x</Name><Value>y</Value> pair -> a single "x = y" row.
@@ -293,6 +406,20 @@ def _flatten_extension(
     if len(children) == 1 and _local_name(children[0].tag).lower() == "value" and not list(children[0]):
         emit("\\".join(path[:-1]), path[-1] if path else _local_name(el.tag), (children[0].text or "").strip())
         return
+
+    # A record of differently-named leaf fields (e.g. one certificate's IssuedTo/
+    # IssuedBy/ExpirationDate/Data) describes one object -> one row, not one per
+    # field. A homogeneous repeated list (all children share one tag) is handled
+    # below instead, joined as a list rather than a "field: value" record.
+    if all(not list(c) for c in children) and len({_local_name(c.tag) for c in children}) > 1:
+        fields = [
+            f"{_local_name(c.tag)}: {_format_field_value(c.text or '')}"
+            for c in children
+            if _format_field_value(c.text or "")
+        ]
+        if fields:
+            emit("\\".join(path[:-1]), path[-1] if path else _local_name(el.tag), "; ".join(fields))
+            return
 
     # Group same-tag siblings: simple repeated leaves collapse to one comma-joined
     # row (mirrors how ListBox/MULTI_SZ values are already displayed elsewhere);
@@ -435,27 +562,42 @@ def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting
             xsi_type = ext_el.get(f"{{{NS['g']}}}type", "") or ext_el.get(
                 "{http://www.w3.org/2001/XMLSchema-instance}type", ""
             )
+            ext_name_el = ext_data.find("g:Name", ns_map)
+            ext_name = _text(ext_name_el) if ext_name_el is not None else ""
+
+            xsi_prefix = xsi_type.split(":", 1)[0] if ":" in xsi_type else ""
+            xsi_ns = ext_el.nsmap.get(xsi_prefix, "") if xsi_prefix else ""
 
             try:
                 if "RegistrySettings" in xsi_type or ext_el.find(f"{{{REGISTRY_NS}}}Policy") is not None:
                     settings.extend(_parse_registry_policies(ext_el, scope))
                 elif "SecuritySettings" in xsi_type or ext_el.find(f"{{{SECURITY_NS}}}SecurityOptions") is not None:
                     settings.extend(_parse_security_settings(ext_el, scope))
+                elif "AuditSettings" in xsi_type or xsi_ns == AUDIT_NS:
+                    settings.extend(_parse_audit_settings(ext_el, scope))
+                elif xsi_ns == SRPV2_NS:
+                    settings.extend(_parse_applocker(ext_el, scope))
                 else:
                     for type_substr, mapped_type in GENERIC_EXTENSION_TYPES:
                         if type_substr in xsi_type:
                             settings.extend(_parse_generic_extension(ext_el, scope, mapped_type))
                             break
+                    else:
+                        # No parser recognizes this extension type at all — surface it
+                        # rather than silently showing fewer settings than the GPO has.
+                        raw_size = len(etree.tostring(ext_el))
+                        label = ext_name or xsi_type or "unknown extension"
+                        warnings.append(
+                            f"No parser for '{label}' extension ({xsi_type or 'no xsi:type'}) "
+                            f"in {scope.value} — {raw_size} bytes of settings not shown."
+                        )
             except Exception as e:
                 warnings.append(f"Error parsing extension ({xsi_type}) in {scope.value}: {e}")
 
-            # Also get the extension name from the sibling <Name> element
-            ext_name_el = ext_data.find("g:Name", ns_map)
-            if ext_name_el is not None:
-                ext_name = _text(ext_name_el)
-                # Tag settings from this extension with the extension name if no category set
+            # Tag settings from this extension with the extension name if no category set
+            if ext_name:
                 for s in settings:
-                    if not s.category and ext_name:
+                    if not s.category:
                         s.category = ext_name
 
     info.setting_count = len(settings)

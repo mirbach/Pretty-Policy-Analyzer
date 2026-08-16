@@ -132,6 +132,7 @@ def parse_gpo_folder(folder_path: str) -> GPODetail:
     # Need SettingType in scope for dedup logic (imported at top)
 
     info.setting_count = len(deduped)
+    info.warning_count = len(warnings)
     return GPODetail(info=info, settings=deduped, parse_warnings=warnings)
 
 

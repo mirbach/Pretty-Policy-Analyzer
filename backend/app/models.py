@@ -74,6 +74,7 @@ class GPOInfo(BaseModel):
     computer_enabled: bool = Field(default=True)
     user_enabled: bool = Field(default=True)
     setting_count: int = Field(default=0)
+    warning_count: int = Field(default=0, description="Number of parse warnings, e.g. unrecognized extension types")
     sddl: str = Field(default="")
 
 

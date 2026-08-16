@@ -49,6 +49,7 @@ export interface GPOInfo {
   computer_enabled: boolean;
   user_enabled: boolean;
   setting_count: number;
+  warning_count: number;
   sddl: string;
 }
 
