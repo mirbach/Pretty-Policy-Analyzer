@@ -8,6 +8,7 @@
   },
   "license": "0BSD",
   "main": "dist-electron/main.js",
+  "desktopName": "pretty-policy-analyzer.desktop",
   "scripts": {
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && python3.13 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
@@ -86,7 +87,6 @@
       "icon": "electron/icon.png",
       "category": "Utility",
       "executableName": "pretty-policy-analyzer",
-      "desktopName": "pretty-policy-analyzer.desktop",
       "synopsis": "Pretty Policy Analyzer Setup",
       "syncDesktopName": true
     }
