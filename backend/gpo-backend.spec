@@ -58,6 +58,10 @@ a = Analysis(
         'click',
         # email_validator (used by pydantic)
         'email_validator',
+        # pycryptodome (GPP cpassword decryption)
+        'Crypto',
+        'Crypto.Cipher',
+        'Crypto.Cipher.AES',
         # app modules
         'app',
         'app.main',

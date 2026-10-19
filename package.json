@@ -1,6 +1,6 @@
 {
   "name": "pretty-policy-analyzer",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Pretty Policy Analyzer Setup",
   "author": {
     "name": "Pretty Policy Analyzer",
@@ -78,7 +78,11 @@
       "target": "dmg"
     },
     "linux": {
-      "target": ["AppImage", "deb", "rpm"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "icon": "electron/icon.png",
       "category": "Utility",
       "executableName": "pretty-policy-analyzer",

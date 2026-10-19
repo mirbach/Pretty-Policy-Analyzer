@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 from typing import Optional
 
 from lxml import etree
+from Crypto.Cipher import AES
 
 from ..models import GPOInfo, PolicyScope, PolicySetting, SettingState, SettingType
 from ._path_utils import safe_resolve_dir
@@ -17,6 +19,18 @@ REGISTRY_NS = "http://www.microsoft.com/GroupPolicy/Settings/Registry"
 SECURITY_NS = "http://www.microsoft.com/GroupPolicy/Settings/Security"
 AUDIT_NS = "http://www.microsoft.com/GroupPolicy/Settings/Auditing"
 SRPV2_NS = "http://www.microsoft.com/GroupPolicy/Settings/SRPV2"  # AppLocker
+
+# Group Policy Preferences (GPP) extension namespaces.
+SCRIPTS_NS = "http://www.microsoft.com/GroupPolicy/Settings/Scripts"
+SHORTCUTS_NS = "http://www.microsoft.com/GroupPolicy/Settings/Shortcuts"
+FILES_NS = "http://www.microsoft.com/GroupPolicy/Settings/Files"
+FOLDERS_NS = "http://www.microsoft.com/GroupPolicy/Settings/Folders"
+FOLDER_OPTIONS_NS = "http://www.microsoft.com/GroupPolicy/Settings/FolderOptions"
+LUGS_NS = "http://www.microsoft.com/GroupPolicy/Settings/Lugs"
+ENVIRONMENT_NS = "http://www.microsoft.com/GroupPolicy/Settings/Environment"
+DRIVE_MAPS_NS = "http://www.microsoft.com/GroupPolicy/Settings/DriveMaps"
+SERVICES_NS = "http://www.microsoft.com/GroupPolicy/Settings/Services"
+SCHEDULED_TASKS_NS = "http://www.microsoft.com/GroupPolicy/Settings/ScheduledTasks"
 
 NS = {
     "g": GPO_NS,
@@ -286,6 +300,510 @@ def _parse_applocker(extension: etree._Element, scope: PolicyScope) -> list[Poli
                     category="AppLocker",
                     explain=rule.get("Description", ""),
                 ))
+    return settings
+
+
+# ── Group Policy Preferences (GPP) items ───────────────────────────────────────
+#
+# GPP extensions (Drive Maps, Local Users and Groups, Files, Folders, Shortcuts,
+# Environment Variables, Folder Options, Services) all share one shape: a
+# container element wrapping "item" elements (tag name varies: Drive, File,
+# Group, User, ...) that each carry a <Properties> element describing the
+# action to take. _gpp_items() walks that shape generically; each extension
+# gets a small bespoke formatter so the resulting rows read naturally.
+
+# The static AES-256 key Microsoft published for encrypting GPP "cpassword"
+# values (MS-GPPREF / MS14-025). It has been public since 2012, so any
+# cpassword found in a GPO backup is a de-facto plaintext, recoverable
+# credential -- surfacing and decrypting it here is the point of an audit tool.
+_GPP_AES_KEY = bytes([
+    0x4e, 0x99, 0x06, 0xe8, 0xfc, 0xb6, 0x6c, 0xc9, 0xfa, 0xf4, 0x93, 0x10, 0x62, 0x0f, 0xfe, 0xe8,
+    0xf4, 0x96, 0xe8, 0x06, 0xcc, 0x05, 0x79, 0x90, 0x20, 0x9b, 0x09, 0xa4, 0x33, 0xb6, 0x6c, 0x1b,
+])
+
+
+def _decrypt_gpp_cpassword(cpassword: str) -> Optional[str]:
+    """Decrypt a GPP cpassword. Returns None if it isn't validly formed."""
+    try:
+        padded = cpassword
+        mod = len(padded) % 4
+        if mod == 1:
+            padded = padded[:-1]
+        elif mod:
+            padded += "=" * (4 - mod)
+        data = base64.b64decode(padded)
+        if not data or len(data) % 16:
+            return None
+        raw = AES.new(_GPP_AES_KEY, AES.MODE_CBC, iv=b"\x00" * 16).decrypt(data)
+        pad_len = raw[-1]
+        if 1 <= pad_len <= 16:
+            raw = raw[:-pad_len]
+        return raw.decode("utf-16le")
+    except Exception:
+        return None
+
+
+_GPP_ACTION_LABELS = {"C": "Create", "R": "Replace", "U": "Update", "D": "Delete", "T": "Replace"}
+
+
+def _gpp_action(props: dict[str, str]) -> str:
+    action = props.get("action", "")
+    return _GPP_ACTION_LABELS.get(action, action)
+
+
+def _gpp_filters_summary(item: etree._Element) -> str:
+    """Best-effort summary of item-level targeting (Filters) -- who/what this
+    preference item is scoped to, e.g. a security-group filter on a drive map."""
+    filters_el = None
+    for child in item:
+        if isinstance(child.tag, str) and _local_name(child.tag) == "Filters":
+            filters_el = child
+            break
+    if filters_el is None:
+        return ""
+    parts = []
+    for f in filters_el:
+        if not isinstance(f.tag, str):
+            continue
+        tag = _local_name(f.tag)
+        if tag == "FilterRunOnce":
+            continue  # internal bookkeeping, not meaningful targeting
+        attrs = f.attrib
+        label = attrs.get("name") or attrs.get("class")
+        neg = "NOT " if attrs.get("not") == "1" else ""
+        parts.append(f"{neg}{tag}({label})" if label else f"{neg}{tag}")
+    return ", ".join(parts)
+
+
+def _gpp_items(extension: etree._Element):
+    """Yield (item_element, item_attrs, props_attrs, props_element) for every
+    GPP preference item in an extension: any element with a direct
+    <Properties> child, regardless of its own tag name (Drive, File, Group,
+    User, GlobalFolderOptionsVista, ... all vary by extension)."""
+    for item in extension.iter():
+        if not isinstance(item.tag, str):
+            continue
+        props_el = None
+        for child in item:
+            if isinstance(child.tag, str) and _local_name(child.tag) == "Properties":
+                props_el = child
+                break
+        if props_el is None:
+            continue
+        yield item, dict(item.attrib), dict(props_el.attrib), props_el
+
+
+def _emit_gpp(
+    out: list[PolicySetting],
+    scope: PolicyScope,
+    category: str,
+    key_path: str,
+    name: str,
+    value: str,
+    explain: str = "",
+) -> None:
+    out.append(PolicySetting(
+        key_path=key_path,
+        value_name=name,
+        display_name=name,
+        value=value,
+        value_display=value,
+        setting_type=SettingType.PREFERENCE,
+        scope=scope,
+        state=SettingState.ENABLED,
+        category=category,
+        explain=explain,
+    ))
+
+
+def _flag_cpassword(value: str, cpassword: str, warnings: list[str], scope: PolicyScope, what: str) -> str:
+    """Append a decrypted (or flagged) credential to a value string and record
+    a top-level warning. `what` describes the credential, e.g. "Drive Map 'M:'"."""
+    plain = _decrypt_gpp_cpassword(cpassword)
+    if plain is not None:
+        value += f" — \U0001F534 CREDENTIAL RECOVERABLE: '{plain}'"
+    else:
+        value += " — \U0001F534 CREDENTIAL RECOVERABLE (cpassword present, could not decode)"
+    warnings.append(
+        f"CRITICAL: {what} stores a recoverable password in {scope.value} Configuration "
+        f"(GPP cpassword, decryptable with Microsoft's long-public MS14-025 key) "
+        f"— treat as compromised and rotate immediately."
+    )
+    return value
+
+
+_SCRIPT_TYPE_LABELS = {
+    "Logon": "Logon Script",
+    "Logoff": "Logoff Script",
+    "Startup": "Startup Script",
+    "Shutdown": "Shutdown Script",
+}
+
+
+def _parse_scripts(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    """Parse the classic (non-GPP) Scripts extension: logon/logoff scripts
+    under User, startup/shutdown scripts under Computer."""
+    settings: list[PolicySetting] = []
+    for script in extension.findall(f"{{{SCRIPTS_NS}}}Script"):
+        command = _text(script.find(f"{{{SCRIPTS_NS}}}Command"))
+        parameters = _text(script.find(f"{{{SCRIPTS_NS}}}Parameters"))
+        script_type = _text(script.find(f"{{{SCRIPTS_NS}}}Type")) or "Logon"
+        order = _text(script.find(f"{{{SCRIPTS_NS}}}Order"))
+
+        value = f"{command} {parameters}".strip() if parameters else command
+        settings.append(PolicySetting(
+            key_path=f"Scripts\\{script_type}",
+            value_name=command,
+            display_name=_SCRIPT_TYPE_LABELS.get(script_type, script_type),
+            value=value,
+            value_display=value,
+            setting_type=SettingType.OTHER,
+            scope=scope,
+            state=SettingState.ENABLED,
+            category="Scripts",
+            explain=f"Run order: {order}" if order else "",
+        ))
+    return settings
+
+
+def _parse_shortcuts(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        action = _gpp_action(props)
+        dest = props.get("shortcutPath") or item_attrs.get("name", "")
+        target = props.get("targetPath", "")
+        args = props.get("arguments", "")
+        value = f"{action}: {dest}"
+        if target:
+            value += f" → {target}"
+        if args:
+            value += f" {args}"
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        name = item_attrs.get("name") or dest
+        _emit_gpp(settings, scope, "Preferences / Shortcuts", f"Preferences\\Shortcuts\\{name}", name, value)
+    return settings
+
+
+def _parse_files(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        action = _gpp_action(props)
+        src = props.get("fromPath", "")
+        dst = props.get("targetPath", "")
+        value = f"{action}: {src} → {dst}" if (src or dst) else action
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        name = item_attrs.get("name") or dst
+        _emit_gpp(settings, scope, "Preferences / Files", f"Preferences\\Files\\{name}", name, value)
+    return settings
+
+
+def _parse_folders(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        action = _gpp_action(props)
+        path = props.get("path", "")
+        value = f"{action}: {path}"
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        name = item_attrs.get("name") or path
+        _emit_gpp(settings, scope, "Preferences / Folders", f"Preferences\\Folders\\{name}", name, value)
+    return settings
+
+
+_FOLDER_OPTIONS_NOTABLE = {
+    "hidden": "Show hidden files/folders",
+    "hideFileExt": "Hide known file extensions",
+    "showSuperHidden": "Show protected OS files",
+}
+
+
+def _parse_folder_options(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        parts = [f"{label}: {props[attr]}" for attr, label in _FOLDER_OPTIONS_NOTABLE.items() if attr in props]
+        if not parts:
+            parts = [f"{k}: {v}" for k, v in props.items() if k != "action" and v]
+        value = "; ".join(parts)
+        name = item_attrs.get("name") or _local_name(item.tag)
+        _emit_gpp(settings, scope, "Preferences / Folder Options", f"Preferences\\Folder Options\\{name}", name, value)
+    return settings
+
+
+def _parse_environment_vars(extension: etree._Element, scope: PolicyScope) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        action = _gpp_action(props)
+        name = props.get("name") or item_attrs.get("name", "")
+        val = props.get("value", "")
+        var_scope = "User" if props.get("user") == "1" else "System"
+        value = f"{action}: {name} = {val} ({var_scope})"
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        _emit_gpp(settings, scope, "Preferences / Environment Variables", f"Preferences\\Environment Variables\\{name}", name, value)
+    return settings
+
+
+def _parse_drive_maps(extension: etree._Element, scope: PolicyScope, warnings: list[str]) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        action = _gpp_action(props)
+        letter = props.get("letter") or item_attrs.get("name", "")
+        path = props.get("path", "")
+        label = props.get("label", "")
+        user = props.get("userName", "")
+        value = f"{action}: {letter}: → {path}"
+        if label:
+            value += f" (label: {label})"
+        if user:
+            value += f" as {user}"
+        cpw = props.get("cpassword")
+        if cpw:
+            value = _flag_cpassword(value, cpw, warnings, scope, f"Drive Map '{letter}:'")
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        _emit_gpp(settings, scope, "Preferences / Drive Maps", f"Preferences\\Drive Maps\\{letter}", f"Drive {letter}:", value)
+    return settings
+
+
+def _parse_lugs(extension: etree._Element, scope: PolicyScope, warnings: list[str]) -> list[PolicySetting]:
+    """Parse the Local Users and Groups GPP extension: local group membership
+    changes and local user creation/password resets."""
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, props_el in _gpp_items(extension):
+        tag = _local_name(item.tag)
+        action = _gpp_action(props)
+        filt = _gpp_filters_summary(item)
+
+        if tag == "Group":
+            name = props.get("groupName") or item_attrs.get("name", "")
+            members = []
+            for members_el in props_el.findall(f"{{{LUGS_NS}}}Members"):
+                for member in members_el.findall(f"{{{LUGS_NS}}}Member"):
+                    members.append(f"{member.get('action', '')} {member.get('name', '')}".strip())
+            value = f"{action}: {name}"
+            if members:
+                value += " — " + "; ".join(members)
+            if filt:
+                value += f" [{filt}]"
+            _emit_gpp(settings, scope, "Preferences / Local Users and Groups",
+                      f"Preferences\\Local Users and Groups\\{name}", f"Local Group: {name}", value)
+        else:  # User
+            username = props.get("userName") or item_attrs.get("name", "")
+            flags = []
+            if props.get("acctDisabled") == "1":
+                flags.append("account disabled")
+            if props.get("neverExpires") == "1":
+                flags.append("password never expires")
+            if props.get("noChange") == "1":
+                flags.append("user cannot change password")
+            value = f"{action}: {username}"
+            if flags:
+                value += " (" + ", ".join(flags) + ")"
+            cpw = props.get("cpassword")
+            if cpw:
+                value = _flag_cpassword(value, cpw, warnings, scope, f"Local user '{username}'")
+            if filt:
+                value += f" [{filt}]"
+            _emit_gpp(settings, scope, "Preferences / Local Users and Groups",
+                      f"Preferences\\Local Users and Groups\\{username}", f"Local User: {username}", value)
+    return settings
+
+
+def _parse_services(extension: etree._Element, scope: PolicyScope, warnings: list[str]) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, _ in _gpp_items(extension):
+        service = props.get("serviceName") or item_attrs.get("name", "")
+        startup = props.get("startupType", "")
+        value = f"Startup: {startup}" if startup else "(no startup type change)"
+        account = props.get("accountName")
+        if account:
+            value += f"; Log on as: {account}"
+        cpw = props.get("cpassword")
+        if cpw:
+            value = _flag_cpassword(value, cpw, warnings, scope, f"Service '{service}'")
+        filt = _gpp_filters_summary(item)
+        if filt:
+            value += f" [{filt}]"
+        _emit_gpp(settings, scope, "Preferences / Services", f"Preferences\\Services\\{service}", f"Service: {service}", value)
+    return settings
+
+
+_TASK_DURATION_RE = re.compile(
+    r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
+)
+
+
+def _format_task_duration(value: str) -> str:
+    """Best-effort human-readable rendering of an ISO-8601 duration (e.g. PT1H30M)."""
+    if not value:
+        return ""
+    m = _TASK_DURATION_RE.match(value)
+    if not m:
+        return value
+    parts = []
+    for unit, label in (("days", "d"), ("hours", "h"), ("minutes", "m"), ("seconds", "s")):
+        v = m.group(unit)
+        if v and v != "0":
+            parts.append(f"{v}{label}")
+    return " ".join(parts) if parts else value
+
+
+_TASK_TRIGGER_LABELS = {
+    "TimeTrigger": "Time trigger",
+    "CalendarTrigger": "Calendar trigger",
+    "LogonTrigger": "At log on",
+    "BootTrigger": "At startup",
+    "IdleTrigger": "On idle",
+    "EventTrigger": "On event",
+    "RegistrationTrigger": "At task creation/modification",
+    "SessionStateChangeTrigger": "On session state change",
+    "WnfStateChangeTrigger": "On WNF state change",
+}
+
+
+def _task_trigger_line(trig: etree._Element) -> str:
+    """Summarize one <Triggers> child (Task Scheduler 2.0 XML) into one line."""
+    label = _TASK_TRIGGER_LABELS.get(_local_name(trig.tag), _local_name(trig.tag))
+    bits: list[str] = []
+
+    enabled = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}Enabled"))
+    if enabled.lower() == "false":
+        bits.append("disabled")
+    start = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}StartBoundary"))
+    if start:
+        bits.append(f"start {start}")
+    end = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}EndBoundary"))
+    if end:
+        bits.append(f"end {end}")
+    delay = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}RandomDelay")) or _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}Delay"))
+    if delay:
+        bits.append(f"random delay {_format_task_duration(delay)}")
+
+    repetition = trig.find(f"{{{SCHEDULED_TASKS_NS}}}Repetition")
+    if repetition is not None:
+        interval = _text(repetition.find(f"{{{SCHEDULED_TASKS_NS}}}Interval"))
+        if interval:
+            rep = f"repeat every {_format_task_duration(interval)}"
+            duration = _text(repetition.find(f"{{{SCHEDULED_TASKS_NS}}}Duration"))
+            if duration:
+                rep += f" for {_format_task_duration(duration)}"
+            bits.append(rep)
+
+    subscription = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}Subscription"))
+    if subscription:
+        bits.append(f"event: {subscription}")
+    user_id = _text(trig.find(f"{{{SCHEDULED_TASKS_NS}}}UserId"))
+    if user_id:
+        bits.append(f"user: {user_id}")
+
+    return f"{label} ({'; '.join(bits)})" if bits else label
+
+
+def _task_action_line(action: etree._Element) -> str:
+    """Summarize one <Actions> child (Task Scheduler 2.0 XML) into one line."""
+    tag = _local_name(action.tag)
+    if tag == "Exec":
+        cmd = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}Command"))
+        args = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}Arguments"))
+        working_dir = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}WorkingDirectory"))
+        line = f"Run: {cmd} {args}".strip()
+        if working_dir:
+            line += f" (in {working_dir})"
+        return line
+    if tag == "ComHandler":
+        class_id = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}ClassId"))
+        return f"COM handler: {class_id}"
+    if tag == "SendEmail":
+        to = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}To"))
+        subject = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}Subject"))
+        return f"Send email to {to}: {subject}"
+    if tag == "ShowMessage":
+        title = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}Title"))
+        body = _text(action.find(f"{{{SCHEDULED_TASKS_NS}}}Body"))
+        return f"Show message '{title}': {body}"
+    return tag
+
+
+def _parse_scheduled_task_item(
+    item: etree._Element,
+    item_attrs: dict[str, str],
+    props: dict[str, str],
+    props_el: etree._Element,
+    scope: PolicyScope,
+    warnings: list[str],
+) -> list[PolicySetting]:
+    """Parse one Task/TaskV2/ImmediateTask/ImmediateTaskV2 item from the
+    Scheduled Tasks GPP extension. TaskV2/ImmediateTaskV2 embed a full Task
+    Scheduler 2.0 XML document under Properties; the legacy (pre-Vista)
+    Task/ImmediateTask items instead carry flat GPP-native fields there."""
+    settings: list[PolicySetting] = []
+    name = item_attrs.get("name") or _local_name(item.tag)
+    action = _gpp_action(props)
+    run_as = props.get("runAs", "")
+    logon_type = props.get("logonType", "")
+    key_path = f"Preferences\\Scheduled Tasks\\{name}"
+
+    header = action
+    if run_as:
+        header += f" — run as {run_as}"
+    if logon_type:
+        header += f" ({logon_type})"
+
+    cpw = props.get("cpassword")
+    if cpw:
+        header = _flag_cpassword(header, cpw, warnings, scope, f"Scheduled task '{name}'")
+
+    task_el = props_el.find(f"{{{SCHEDULED_TASKS_NS}}}Task")
+    description = ""
+    if task_el is not None:
+        reg_info = task_el.find(f"{{{SCHEDULED_TASKS_NS}}}RegistrationInfo")
+        if reg_info is not None:
+            author = _text(reg_info.find(f"{{{SCHEDULED_TASKS_NS}}}Author"))
+            description = _text(reg_info.find(f"{{{SCHEDULED_TASKS_NS}}}Description"))
+            if author:
+                header += f"; author {author}"
+
+    _emit_gpp(settings, scope, "Preferences / Scheduled Tasks", key_path, name, header, explain=description)
+
+    if task_el is not None:
+        triggers_el = task_el.find(f"{{{SCHEDULED_TASKS_NS}}}Triggers")
+        if triggers_el is not None:
+            lines = [_task_trigger_line(t) for t in triggers_el if isinstance(t.tag, str)]
+            if lines:
+                _emit_gpp(settings, scope, "Preferences / Scheduled Tasks", key_path,
+                          f"{name} — Triggers", "; ".join(lines))
+
+        actions_el = task_el.find(f"{{{SCHEDULED_TASKS_NS}}}Actions")
+        if actions_el is not None:
+            lines = [_task_action_line(a) for a in actions_el if isinstance(a.tag, str)]
+            if lines:
+                _emit_gpp(settings, scope, "Preferences / Scheduled Tasks", key_path,
+                          f"{name} — Actions", "; ".join(lines))
+    else:
+        # Legacy Task/ImmediateTask: no Task Scheduler XML to walk, just
+        # whatever flat fields Properties carries -- flatten them generically.
+        for child in props_el:
+            if isinstance(child.tag, str):
+                _flatten_extension(child, [name, _local_name(child.tag)], scope, SettingType.PREFERENCE, settings)
+
+    filt = _gpp_filters_summary(item)
+    if filt:
+        _emit_gpp(settings, scope, "Preferences / Scheduled Tasks", key_path, f"{name} — Filters", filt)
+
+    return settings
+
+
+def _parse_scheduled_tasks(extension: etree._Element, scope: PolicyScope, warnings: list[str]) -> list[PolicySetting]:
+    settings: list[PolicySetting] = []
+    for item, item_attrs, props, props_el in _gpp_items(extension):
+        settings.extend(_parse_scheduled_task_item(item, item_attrs, props, props_el, scope, warnings))
     return settings
 
 
@@ -577,6 +1095,26 @@ def parse_gpreport(folder_path: str) -> tuple[GPOInfo | None, list[PolicySetting
                     settings.extend(_parse_audit_settings(ext_el, scope))
                 elif xsi_ns == SRPV2_NS:
                     settings.extend(_parse_applocker(ext_el, scope))
+                elif xsi_ns == SCRIPTS_NS:
+                    settings.extend(_parse_scripts(ext_el, scope))
+                elif xsi_ns == SHORTCUTS_NS:
+                    settings.extend(_parse_shortcuts(ext_el, scope))
+                elif xsi_ns == FILES_NS:
+                    settings.extend(_parse_files(ext_el, scope))
+                elif xsi_ns == FOLDERS_NS:
+                    settings.extend(_parse_folders(ext_el, scope))
+                elif xsi_ns == FOLDER_OPTIONS_NS:
+                    settings.extend(_parse_folder_options(ext_el, scope))
+                elif xsi_ns == LUGS_NS:
+                    settings.extend(_parse_lugs(ext_el, scope, warnings))
+                elif xsi_ns == ENVIRONMENT_NS:
+                    settings.extend(_parse_environment_vars(ext_el, scope))
+                elif xsi_ns == DRIVE_MAPS_NS:
+                    settings.extend(_parse_drive_maps(ext_el, scope, warnings))
+                elif xsi_ns == SERVICES_NS:
+                    settings.extend(_parse_services(ext_el, scope, warnings))
+                elif xsi_ns == SCHEDULED_TASKS_NS:
+                    settings.extend(_parse_scheduled_tasks(ext_el, scope, warnings))
                 else:
                     for type_substr, mapped_type in GENERIC_EXTENSION_TYPES:
                         if type_substr in xsi_type:
