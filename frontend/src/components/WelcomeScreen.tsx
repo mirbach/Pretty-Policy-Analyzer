@@ -111,7 +111,7 @@ export function WelcomeScreen() {
             <img
               src={logo}
               alt="Pretty Policy Analyzer logo"
-              className="h-24 w-auto drop-shadow-sm"
+              className="h-24 w-auto drop-shadow-xs"
             />
           </div>
           <h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100 mb-2">
@@ -146,7 +146,7 @@ export function WelcomeScreen() {
                   onChange={(e) => setFolderPath(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder="C:\GPOBackups"
-                  className="flex-1 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-900 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-900 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   onClick={handleSubmit}

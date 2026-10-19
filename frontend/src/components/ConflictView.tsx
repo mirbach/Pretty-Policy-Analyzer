@@ -57,7 +57,7 @@ export function ConflictView() {
           {Object.entries(result.by_severity).map(([sev, count]) => {
             const config = severityConfig[sev as ConflictSeverity];
             return (
-              <span key={sev} className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${config.bg} ${config.color}`}>
+              <span key={sev} className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm ${config.bg} ${config.color}`}>
                 {sev}: {count}
               </span>
             );
@@ -88,7 +88,7 @@ export function ConflictView() {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             aria-label="Filter by category"
-            className="px-2 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-300"
+            className="px-2 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded-sm bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-300"
           >
             <option value="all">All categories</option>
             {categories.map((c) => (
@@ -103,7 +103,7 @@ export function ConflictView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter conflicts..."
-            className="px-2 py-1 text-sm border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 w-48"
+            className="px-2 py-1 text-sm border border-surface-300 dark:border-surface-600 rounded-sm bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 w-48"
           />
         </div>
       </div>
@@ -143,10 +143,10 @@ function ConflictCard({ conflict }: { conflict: ConflictEntry }) {
             <span className="font-medium text-sm text-surface-800 dark:text-surface-200 truncate">
               {conflict.display_name || conflict.value_name}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${config.color} ${config.bg}`}>
+            <span className={`text-xs px-1.5 py-0.5 rounded-sm ${config.color} ${config.bg}`}>
               {conflict.severity}
             </span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-surface-500">
+            <span className="text-xs px-1.5 py-0.5 rounded-sm bg-surface-100 dark:bg-surface-800 text-surface-500">
               {conflict.scope}
             </span>
           </div>

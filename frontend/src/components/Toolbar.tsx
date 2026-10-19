@@ -278,11 +278,11 @@ export function Toolbar({
               value={folderPath}
               onChange={(e) => setFolderPath(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFolderSubmit()}
-              className="px-2 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 w-64"
+              className="px-2 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded-sm bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 w-64"
               placeholder="Enter GPO backup folder path"
               autoFocus
             />
-            <button onClick={handleFolderSubmit} className="px-2 py-1 text-xs bg-blue-600 text-white rounded">Go</button>
+            <button onClick={handleFolderSubmit} className="px-2 py-1 text-xs bg-blue-600 text-white rounded-sm">Go</button>
             <button onClick={() => setShowFolderInput(false)} className="px-2 py-1 text-xs text-surface-400 hover:text-surface-600">Cancel</button>
           </div>
         ) : (
@@ -292,7 +292,7 @@ export function Toolbar({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu((v) => !v)}
-            className="relative p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-surface-500 dark:text-surface-400"
+            className="relative p-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-sm text-surface-500 dark:text-surface-400"
             title="Menu"
           >
             {showMenu ? <X size={16} /> : <Menu size={16} />}

@@ -140,7 +140,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
         </div>
 
         {parse_warnings.length > 0 && (
-          <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-400">
+          <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-sm text-xs text-yellow-700 dark:text-yellow-400">
             <div className="flex items-center gap-1 font-medium mb-1">
               <AlertCircle size={12} /> Parse warnings
             </div>
@@ -159,7 +159,7 @@ export function GPODetail({ gpoId, aiCache, setAiCache, migrationStatusStore, se
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             placeholder="Search settings..."
-              className="w-full pl-8 pr-3 py-1.5 text-sm border border-surface-300 dark:border-surface-600 rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-surface-300 dark:border-surface-600 rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <button

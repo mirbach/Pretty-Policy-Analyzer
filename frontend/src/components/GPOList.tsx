@@ -132,7 +132,7 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search GPOs..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-surface-300 dark:border-surface-600 rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-surface-300 dark:border-surface-600 rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           />
         </div>
         {visibleBackupIds.length > 0 && (

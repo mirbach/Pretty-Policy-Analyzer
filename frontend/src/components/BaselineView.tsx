@@ -189,7 +189,7 @@ export function BaselineView() {
             <select
               value={selectedBundled}
               onChange={(e) => setSelectedBundled(e.target.value)}
-              className="text-xs px-2 py-1.5 border border-surface-300 dark:border-surface-600 rounded bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs px-2 py-1.5 border border-surface-300 dark:border-surface-600 rounded-sm bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select baseline…</option>
               {bundledBaselines.map((b) => (
@@ -208,7 +208,7 @@ export function BaselineView() {
         </div>
 
         {loadError && (
-          <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600 dark:text-red-400 text-xs mb-2">
+          <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-sm text-red-600 dark:text-red-400 text-xs mb-2">
             <AlertTriangle size={13} /> {loadError}
           </div>
         )}
@@ -221,7 +221,7 @@ export function BaselineView() {
               id="baseline-select"
               value={effectiveBaselineId ?? ''}
               onChange={(e) => setSelectedBaselineId(e.target.value || null)}
-              className="text-xs px-2 py-1 border border-surface-300 dark:border-surface-600 rounded bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs px-2 py-1 border border-surface-300 dark:border-surface-600 rounded-sm bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
             >
               {baselines.map((b) => (
                 <option key={b.id} value={b.id}>{b.display_name}</option>
@@ -345,7 +345,7 @@ export function BaselineView() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Filter settings…"
-                className="pl-7 pr-3 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="pl-7 pr-3 py-1 text-xs border border-surface-300 dark:border-surface-600 rounded-sm bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 w-48 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>

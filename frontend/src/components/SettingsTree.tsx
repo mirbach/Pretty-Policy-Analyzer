@@ -32,8 +32,8 @@ const MARKDOWN_COMPONENTS: Components = {
   code: ({ children, className }) => {
     const isBlock = className?.includes('language-');
     return isBlock
-      ? <code className="block bg-surface-900 dark:bg-surface-950 text-green-400 text-xs p-2 rounded my-1 overflow-x-auto whitespace-pre">{children}</code>
-      : <code className="bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200 px-1 rounded text-xs font-mono">{children}</code>;
+      ? <code className="block bg-surface-900 dark:bg-surface-950 text-green-400 text-xs p-2 rounded-sm my-1 overflow-x-auto whitespace-pre">{children}</code>
+      : <code className="bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200 px-1 rounded-sm text-xs font-mono">{children}</code>;
   },
   pre: ({ children }) => <pre className="my-1.5">{children}</pre>,
   strong: ({ children }) => <strong className="font-semibold text-surface-800 dark:text-surface-200">{children}</strong>,
@@ -157,7 +157,7 @@ function TreeBranch({
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className={`flex items-center gap-1 w-full text-left py-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded text-sm transition-colors ${indentClass(TREE_INDENT, depth)}`}
+        className={`flex items-center gap-1 w-full text-left py-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-sm text-sm transition-colors ${indentClass(TREE_INDENT, depth)}`}
       >
         {childNodes.length > 0 || node.settings.length > 0 ? (
           expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
@@ -300,7 +300,7 @@ Be specific and practical.`;
             {s.value_display || String(s.value ?? '')}
           </div>
         </div>
-        <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${stateColor(s.state)}`}>
+        <span className={`text-xs px-1.5 py-0.5 rounded-sm shrink-0 ${stateColor(s.state)}`}>
           {s.state}
         </span>
         {migrationStatus === 'migrated' && (
@@ -331,7 +331,7 @@ Be specific and practical.`;
                   title=""
                 >
                   ⓘ
-                  <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded bg-surface-800 dark:bg-surface-700 text-surface-100 text-xs px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-normal">
+                  <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 rounded-sm bg-surface-800 dark:bg-surface-700 text-surface-100 text-xs px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-normal">
                     <strong>**delvals.</strong> is a Group Policy Preferences directive that deletes all existing registry values under this key before applying the policy's new values. This ensures the key is fully replaced rather than merged with any pre-existing entries.
                   </span>
                 </span>
@@ -342,7 +342,7 @@ Be specific and practical.`;
           <div><span className="text-surface-400">Type:</span> {s.setting_type}</div>
           {s.supported && <div><span className="text-surface-400">Supported:</span> {s.supported}</div>}
           {s.explain && (
-            <div className="mt-1 p-2 bg-surface-100 dark:bg-surface-800 rounded text-surface-600 dark:text-surface-400 max-h-32 overflow-y-auto">
+            <div className="mt-1 p-2 bg-surface-100 dark:bg-surface-800 rounded-sm text-surface-600 dark:text-surface-400 max-h-32 overflow-y-auto">
               {s.explain}
             </div>
           )}
@@ -373,7 +373,7 @@ Be specific and practical.`;
                   onChange={(e) => handleReasonChange(e.target.value)}
                   placeholder="Reason this setting won't be migrated…"
                   rows={2}
-                  className={`w-full text-xs px-2 py-1 border rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  className={`w-full text-xs px-2 py-1 border rounded-md bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 ${
                     statusEntry?.reason ? 'border-surface-300 dark:border-surface-600' : 'border-red-300 dark:border-red-700'
                   }`}
                 />
@@ -395,7 +395,7 @@ Be specific and practical.`;
               {aiLoading ? 'Asking AI…' : 'Explain & Intune Migration'}
             </button>
             {aiError && (
-              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-red-600 dark:text-red-400 text-xs">
+              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-sm text-red-600 dark:text-red-400 text-xs">
                 {aiError}
               </div>
             )}
@@ -409,7 +409,7 @@ Be specific and practical.`;
                     variant="compact"
                   />
                 </div>
-                <div ref={aiResultRef} className="mt-1 p-3 bg-violet-50 dark:bg-violet-900/20 rounded max-h-[600px] overflow-y-auto">
+                <div ref={aiResultRef} className="mt-1 p-3 bg-violet-50 dark:bg-violet-900/20 rounded-sm max-h-[600px] overflow-y-auto">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                     {aiResponse}
                   </ReactMarkdown>

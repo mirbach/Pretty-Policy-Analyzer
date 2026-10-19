@@ -141,7 +141,7 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
           {Object.entries(result.gpo_names).map(([id, name]) => (
             <span
               key={id}
-              className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded"
+              className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-sm"
             >
               {name}
             </span>
@@ -170,7 +170,7 @@ export function GPOCompare({ gpoIds }: GPOCompareProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter..."
-            className="px-2 py-1 text-sm border border-surface-300 dark:border-surface-600 rounded bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 w-48"
+            className="px-2 py-1 text-sm border border-surface-300 dark:border-surface-600 rounded-sm bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 w-48"
           />
         </div>
       </div>

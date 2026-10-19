@@ -33,8 +33,8 @@ const MARKDOWN_COMPONENTS: Components = {
   code: ({ children, className }) => {
     const isBlock = className?.includes('language-');
     return isBlock
-      ? <code className="block bg-surface-900 dark:bg-surface-950 text-green-400 text-xs p-2 rounded my-1 overflow-x-auto whitespace-pre">{children}</code>
-      : <code className="bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200 px-1 rounded text-xs font-mono">{children}</code>;
+      ? <code className="block bg-surface-900 dark:bg-surface-950 text-green-400 text-xs p-2 rounded-sm my-1 overflow-x-auto whitespace-pre">{children}</code>
+      : <code className="bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200 px-1 rounded-sm text-xs font-mono">{children}</code>;
   },
   pre: ({ children }) => <pre className="my-1.5">{children}</pre>,
   strong: ({ children }) => <strong className="font-semibold text-surface-800 dark:text-surface-200">{children}</strong>,
@@ -473,7 +473,7 @@ ${buildSettingLines(batchSettings)}`;
               type="button"
               title="Close"
               onClick={onClose}
-              className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors"
+              className="p-1 rounded-sm hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors"
             >
               <X size={16} />
             </button>
@@ -513,13 +513,13 @@ ${buildSettingLines(batchSettings)}`;
           )}
 
           {error && !loading && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded text-red-600 dark:text-red-400 text-sm mb-4">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-sm text-red-600 dark:text-red-400 text-sm mb-4">
               {error}
             </div>
           )}
 
           {jsonValidation && !jsonLoading && (
-            <div className={`p-3 rounded text-xs mb-4 ${jsonValidation.valid ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : (jsonValidation.payload?.configurationProfiles.length ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
+            <div className={`p-3 rounded-sm text-xs mb-4 ${jsonValidation.valid ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : (jsonValidation.payload?.configurationProfiles.length ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 font-medium">
                   {jsonValidation.valid
@@ -536,7 +536,7 @@ ${buildSettingLines(batchSettings)}`;
                 <button
                   type="button"
                   onClick={() => handleExportIntuneJson(true)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors shrink-0"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-sm text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors shrink-0"
                 >
                   <RefreshCw size={11} />
                   Regenerate
@@ -577,7 +577,7 @@ ${buildSettingLines(batchSettings)}`;
                 <button
                   type="button"
                   onClick={handleDownloadRawJsonResponse}
-                  className="mt-2 flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
+                  className="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
                 >
                   <Download size={11} />
                   Download raw response for debugging

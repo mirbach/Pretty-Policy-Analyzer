@@ -7,7 +7,7 @@ interface AboutModalProps {
 export function AboutModal({ onClose }: AboutModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
@@ -32,7 +32,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 transition-colors"
+            className="p-1 rounded-sm hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 transition-colors"
           >
             <X size={16} />
           </button>
