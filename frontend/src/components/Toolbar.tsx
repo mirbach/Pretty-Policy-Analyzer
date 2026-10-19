@@ -7,6 +7,7 @@ import { buildBackupBundle, parseBackupBundle, applyBackupBundle, backupFilename
 import type { MigrationStatusStore } from '../lib/migrationStatus';
 import { AISettingsModal } from './AISettingsModal';
 import { AboutModal } from './AboutModal';
+import { isUpdateCheckEnabled, setUpdateCheckEnabled, updateCheckAvailable } from '../lib/updateCheck';
 import logo from '../assets/PPALogo.png';
 import {
   LayoutDashboard,
@@ -93,6 +94,7 @@ export function Toolbar({
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [updateCheckOn, setUpdateCheckOn] = useState(isUpdateCheckEnabled);
   const menuRef = useRef<HTMLDivElement>(null);
   const scanMutation = useScanFolder();
   const uploadMutation = useScanUpload();
@@ -373,6 +375,16 @@ export function Toolbar({
                 <Settings size={15} />
                 AI settings
               </button>
+              {updateCheckAvailable() && (
+                <label className={`${menuItemClass} cursor-pointer`}>
+                  <input
+                    type="checkbox"
+                    checked={updateCheckOn}
+                    onChange={(e) => { setUpdateCheckOn(e.target.checked); setUpdateCheckEnabled(e.target.checked); }}
+                  />
+                  Check for updates on startup
+                </label>
+              )}
               <button onClick={() => { setShowMenu(false); setShowAbout(true); }} className={menuItemClass}>
                 <Info size={15} />
                 About

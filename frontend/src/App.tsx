@@ -13,6 +13,8 @@ import { MigrationReportView } from './components/MigrationReportView';
 import { initAIConfig } from './lib/aiClient';
 import { loadMigrationStatusStore, MIGRATION_STATUS_STORAGE_KEY, type MigrationStatusStore } from './lib/migrationStatus';
 import { AI_CACHE_STORAGE_KEY } from './lib/storageKeys';
+import { UpdateToast } from './components/UpdateToast';
+import { checkForUpdateOnStartup, dismissUpdate, openReleasePage, type UpdateInfo } from './lib/updateCheck';
 
 type View = 'detail' | 'compare' | 'conflicts' | 'search' | 'baseline' | 'migration';
 
@@ -32,12 +34,21 @@ export default function App() {
   const { data: status, isLoading } = useStatus();
   const [selectedGpoId, setSelectedGpoId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [updateRelease, setUpdateRelease] = useState<UpdateInfo | null>(null);
   const [currentView, setCurrentView] = useState<View>('detail');
   const [allAiCaches, setAllAiCaches] = useState<Record<string, AiCache>>(loadPersistedAiCaches);
   const [migrationStatusStore, setMigrationStatusStore] = useState<MigrationStatusStore>(loadMigrationStatusStore);
 
   // Load AI config once (from safeStorage in Electron, localStorage in browser)
   useEffect(() => { void initAIConfig(); }, []);
+
+  // Check GitHub for a newer release shortly after startup (Electron only, opt-out in menu)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void checkForUpdateOnStartup().then(setUpdateRelease);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Persist AI cache to localStorage whenever it changes
   useEffect(() => {
@@ -89,6 +100,13 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-surface-50 dark:bg-surface-950">
+      {updateRelease && (
+        <UpdateToast
+          release={updateRelease}
+          onView={() => { openReleasePage(updateRelease.url); }}
+          onDismiss={() => { dismissUpdate(updateRelease.version); setUpdateRelease(null); }}
+        />
+      )}
       <Toolbar
         status={status}
         currentView={currentView}

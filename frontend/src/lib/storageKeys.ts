@@ -1,2 +1,6 @@
 export const AI_CACHE_STORAGE_KEY = 'pretty_policy_analyzer_ai_cache';
 export const MIGRATION_STATUS_STORAGE_KEY = 'pretty_policy_analyzer_migration_status';
+export const UPDATE_CHECK_ENABLED_STORAGE_KEY = 'pretty_policy_analyzer_update_check_enabled';
+export const UPDATE_LAST_CHECK_STORAGE_KEY = 'pretty_policy_analyzer_update_last_check';
+export const UPDATE_DISMISSED_VERSION_STORAGE_KEY = 'pretty_policy_analyzer_update_dismissed_version';
+export const UPDATE_LATEST_RELEASE_STORAGE_KEY = 'pretty_policy_analyzer_update_latest_release';

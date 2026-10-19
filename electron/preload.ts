@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('__electronAPI', {
   loadAIConfig: (): Promise<{ provider: string; model: string; apiKey: string } | null> =>
     ipcRenderer.invoke('ai-config-load'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  checkForUpdate: (): Promise<{ version: string; name: string; url: string } | null> =>
+    ipcRenderer.invoke('check-for-update'),
   saveBackupFile: (content: string, suggestedName: string): Promise<string | null> =>
     ipcRenderer.invoke('save-backup-file', content, suggestedName),
   openBackupFile: (): Promise<string | null> => ipcRenderer.invoke('open-backup-file'),

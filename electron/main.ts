@@ -97,6 +97,32 @@ ipcMain.handle('open-external', (_event, url: string) => {
   shell.openExternal(url);
 });
 
+// IPC: check GitHub for a newer stable release (pre-releases and drafts are excluded by /releases/latest)
+const RELEASES_API = 'https://api.github.com/repos/mirbach/Pretty-Policy-Analyzer/releases/latest';
+const RELEASE_URL_PREFIX = 'https://github.com/mirbach/Pretty-Policy-Analyzer/';
+
+ipcMain.handle('check-for-update', async (): Promise<{ version: string; name: string; url: string } | null> => {
+  try {
+    const res = await fetch(RELEASES_API, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': `${APP_NAME}/${app.getVersion()}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { tag_name?: unknown; name?: unknown; html_url?: unknown; prerelease?: unknown; draft?: unknown };
+    if (data.prerelease || data.draft) return null;
+    if (typeof data.tag_name !== 'string' || typeof data.html_url !== 'string') return null;
+    if (!data.html_url.startsWith(RELEASE_URL_PREFIX)) return null;
+    return {
+      version: data.tag_name.replace(/^v/i, ''),
+      name: typeof data.name === 'string' ? data.name : data.tag_name,
+      url: data.html_url,
+    };
+  } catch (err) {
+    log(`update check failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
+});
+
 // IPC: open folder dialog
 ipcMain.handle('select-folder', async () => {
   if (!mainWindow) return null;

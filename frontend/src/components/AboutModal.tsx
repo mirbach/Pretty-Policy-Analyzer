@@ -1,10 +1,26 @@
-import { X, ExternalLink, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { X, ExternalLink, Shield, RefreshCw } from 'lucide-react';
+import { fetchLatestRelease, isNewerVersion, openReleasePage, updateCheckAvailable, type UpdateInfo } from '../lib/updateCheck';
 
 interface AboutModalProps {
   onClose: () => void;
 }
 
 export function AboutModal({ onClose }: AboutModalProps) {
+  const [checking, setChecking] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{ release: UpdateInfo | null; failed: boolean } | null>(null);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    setUpdateResult(null);
+    const release = await fetchLatestRelease();
+    setUpdateResult({
+      release: release && isNewerVersion(release.version, __APP_VERSION__) ? release : null,
+      failed: release === null,
+    });
+    setChecking(false);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
@@ -53,6 +69,33 @@ export function AboutModal({ onClose }: AboutModalProps) {
             </span>
           </div>
         </div>
+
+        {updateCheckAvailable() && (
+          <div className="flex flex-col gap-2 text-sm">
+            <button
+              onClick={handleCheck}
+              disabled={checking}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 font-medium hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors disabled:opacity-60"
+            >
+              <RefreshCw size={16} className={checking ? 'animate-spin' : ''} />
+              Check for updates
+            </button>
+            {updateResult && (
+              updateResult.release ? (
+                <button
+                  onClick={() => openReleasePage(updateResult.release!.url)}
+                  className="text-blue-600 dark:text-blue-400 hover:underline text-center"
+                >
+                  Version {updateResult.release.version} is available — view release
+                </button>
+              ) : (
+                <p className="text-center text-xs text-surface-500 dark:text-surface-400">
+                  {updateResult.failed ? 'Could not reach GitHub.' : "You're up to date."}
+                </p>
+              )
+            )}
+          </div>
+        )}
 
         {/* GitHub link */}
         <button
