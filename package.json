@@ -29,7 +29,7 @@
     "@electron/packager": "^20.3.0",
     "@types/node": "^20.11.0",
     "concurrently": "^9.2.5",
-    "electron": "^41.10.6",
+    "electron": "^42.11.16",
     "electron-builder": "^26.8.1",
     "rcedit": "^5.0.2",
     "typescript": "^5.7.2"
