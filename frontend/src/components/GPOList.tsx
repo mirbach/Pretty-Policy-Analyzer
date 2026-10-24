@@ -38,8 +38,12 @@ export function GPOList({ selectedId, compareIds, onSelect, onCompareToggle, onS
 
   const renderRow = (gpo: GPOInfo) => {
     const statusMap = migrationStatusStore[gpoStatusKey(gpo)] ?? {};
-    const migratedCount = Object.values(statusMap).filter((e) => e.status === 'migrated').length;
-    const wontMigrateCount = Object.values(statusMap).filter((e) => e.status === 'wont_migrate').length;
+    // statusMap can hold stale entries for settings that no longer exist (re-parse changed
+    // their key or deduped them), and the list has no per-setting keys to filter them out.
+    // Clamp to setting_count so the counts can't exceed it or go negative.
+    const statusEntries = Object.values(statusMap);
+    const wontMigrateCount = Math.min(statusEntries.filter((e) => e.status === 'wont_migrate').length, gpo.setting_count);
+    const migratedCount = Math.min(statusEntries.filter((e) => e.status === 'migrated').length, gpo.setting_count - wontMigrateCount);
     const notMigratedCount = gpo.setting_count - migratedCount - wontMigrateCount;
 
     return (
