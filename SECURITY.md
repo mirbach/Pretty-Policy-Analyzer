@@ -30,8 +30,8 @@ address the issue before any public disclosure.
 ## Scope Notes
 
 Pretty Policy Analyzer parses GPO backup exports (XML, `.pol`, `.inf`) and,
-optionally, calls out to a user-supplied LLM API key (OpenAI, xAI, or Google
-Gemini) for plain-English setting explanations.
+optionally, calls out to a user-supplied LLM API key (OpenAI, xAI, Google
+Gemini, Anthropic Claude, or GitHub Models) for plain-English setting explanations.
 The desktop app also checks the public GitHub releases API for a newer version
 (at most once a day, no user data sent, never downloads or installs anything);
 this can be turned off via the menu ("Check for updates on startup"). Reports related to any of the

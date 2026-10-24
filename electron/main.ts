@@ -163,25 +163,42 @@ ipcMain.handle('open-backup-file', async () => {
 // IPC: save AI config — API key is encrypted with OS credential store via safeStorage
 const AI_CONFIG_PATH = path.join(app.getPath('userData'), 'ai-config.json');
 
-ipcMain.handle('ai-config-save', (_event, config: { provider: string; model: string; apiKey: string }) => {
+type AIProfiles = Record<string, { apiKey: string; model: string }>;
+type AIConfigPayload = { provider: string; model: string; apiKey: string; profiles?: AIProfiles };
+
+ipcMain.handle('ai-config-save', (_event, config: AIConfigPayload) => {
+  // Each provider keeps its own key + model; the whole map is encrypted as one blob.
+  const profiles: AIProfiles = config.profiles ?? { [config.provider]: { apiKey: config.apiKey, model: config.model } };
+  const json = JSON.stringify(profiles);
   const canEncrypt = safeStorage.isEncryptionAvailable();
-  const encryptedKey = canEncrypt
-    ? safeStorage.encryptString(config.apiKey).toString('base64')
-    : Buffer.from(config.apiKey).toString('base64');
-  const stored = { provider: config.provider, model: config.model, encryptedKey, encrypted: canEncrypt };
+  const encryptedProfiles = canEncrypt
+    ? safeStorage.encryptString(json).toString('base64')
+    : Buffer.from(json).toString('base64');
+  const stored = { provider: config.provider, encryptedProfiles, encrypted: canEncrypt };
   fs.writeFileSync(AI_CONFIG_PATH, JSON.stringify(stored), 'utf-8');
 });
 
-ipcMain.handle('ai-config-load', (): { provider: string; model: string; apiKey: string } | null => {
+ipcMain.handle('ai-config-load', (): AIConfigPayload | null => {
   if (!fs.existsSync(AI_CONFIG_PATH)) return null;
   try {
     const raw = JSON.parse(fs.readFileSync(AI_CONFIG_PATH, 'utf-8')) as {
-      provider: string; model: string; encryptedKey: string; encrypted: boolean;
+      provider: string; model?: string; encryptedKey?: string; encryptedProfiles?: string; encrypted: boolean;
     };
-    const apiKey = (raw.encrypted && safeStorage.isEncryptionAvailable())
-      ? safeStorage.decryptString(Buffer.from(raw.encryptedKey, 'base64'))
-      : Buffer.from(raw.encryptedKey, 'base64').toString('utf-8');
-    return { provider: raw.provider, model: raw.model, apiKey };
+    const decode = (b64: string) => (raw.encrypted && safeStorage.isEncryptionAvailable())
+      ? safeStorage.decryptString(Buffer.from(b64, 'base64'))
+      : Buffer.from(b64, 'base64').toString('utf-8');
+
+    let profiles: AIProfiles;
+    if (raw.encryptedProfiles) {
+      profiles = JSON.parse(decode(raw.encryptedProfiles)) as AIProfiles;
+    } else if (raw.encryptedKey) {
+      // Legacy single-key format
+      profiles = { [raw.provider]: { apiKey: decode(raw.encryptedKey), model: raw.model ?? '' } };
+    } else {
+      return null;
+    }
+    const active = profiles[raw.provider];
+    return { provider: raw.provider, model: active?.model ?? '', apiKey: active?.apiKey ?? '', profiles };
   } catch (err) {
     log(`Failed to load AI config: ${err}`);
     return null;

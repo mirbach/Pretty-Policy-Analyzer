@@ -3,7 +3,9 @@ import { X, Eye, EyeOff } from 'lucide-react';
 import {
   type AIConfig,
   type AIProvider,
+  type ProviderCredentials,
   PROVIDER_LABELS,
+  PROVIDER_SHORT_LABELS,
   fetchAvailableModels,
   loadAIConfig,
   saveAIConfig,
@@ -13,13 +15,25 @@ interface AISettingsModalProps {
   onClose: () => void;
 }
 
-const PROVIDERS: AIProvider[] = ['openai', 'xai', 'gemini'];
+const PROVIDERS: AIProvider[] = ['openai', 'xai', 'gemini', 'anthropic', 'github'];
+
+const MODEL_PLACEHOLDERS: Record<AIProvider, string> = {
+  openai: 'gpt-4o',
+  xai: 'grok-3',
+  gemini: 'gemini-2.5-flash',
+  anthropic: 'claude-sonnet-5-5',
+  github: 'openai/gpt-4.1',
+};
 
 export function AISettingsModal({ onClose }: AISettingsModalProps) {
   const existing = loadAIConfig();
   const [provider, setProvider] = useState<AIProvider>(existing?.provider ?? 'openai');
   const [apiKey, setApiKey] = useState(existing?.apiKey ?? '');
   const [model, setModel] = useState(existing?.model ?? '');
+  // Every provider keeps its own key + model; the active one lives in the apiKey/model state above.
+  const [profiles, setProfiles] = useState<Partial<Record<AIProvider, ProviderCredentials>>>(
+    existing?.profiles ?? (existing ? { [existing.provider]: { apiKey: existing.apiKey, model: existing.model } } : {}),
+  );
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [models, setModels] = useState<string[]>([]);
@@ -51,8 +65,20 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
     return () => clearTimeout(t);
   }, [provider, apiKey]);
 
+  const handleProviderChange = (next: AIProvider) => {
+    if (next === provider) return;
+    setProfiles(prev => ({ ...prev, [provider]: { apiKey, model } }));
+    setProvider(next);
+    setApiKey(profiles[next]?.apiKey ?? '');
+    setModel(profiles[next]?.model ?? '');
+  };
+
   const handleSave = async () => {
-    const config: AIConfig = { provider, apiKey: apiKey.trim(), model };
+    const active = { apiKey: apiKey.trim(), model };
+    const allProfiles = Object.fromEntries(
+      Object.entries({ ...profiles, [provider]: active }).filter(([, c]) => c?.apiKey),
+    ) as Partial<Record<AIProvider, ProviderCredentials>>;
+    const config: AIConfig = { provider, ...active, profiles: allProfiles };
     await saveAIConfig(config);
     setSaved(true);
     setTimeout(() => {
@@ -101,14 +127,14 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
               {PROVIDERS.map((p) => (
                 <button
                   key={p}
-                  onClick={() => setProvider(p)}
+                  onClick={() => handleProviderChange(p)}
                   className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                     provider === p
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                       : 'border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-800'
                   }`}
                 >
-                  {p === 'openai' ? 'ChatGPT' : p === 'xai' ? 'Grok' : 'Gemini'}
+                  {PROVIDER_SHORT_LABELS[p]}
                 </button>
               ))}
             </div>
@@ -117,13 +143,15 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
 
           {/* API Key */}
           <div>
-            <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">API Key</label>
+            <label className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1.5">{provider === 'github' ? 'GitHub Token' : 'API Key'}</label>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={`Enter your ${PROVIDER_LABELS[provider]} API key`}
+                placeholder={provider === 'github'
+                  ? 'Enter a GitHub personal access token'
+                  : `Enter your ${PROVIDER_LABELS[provider]} API key`}
                 className="w-full pr-9 pl-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 autoComplete="off"
               />
@@ -136,7 +164,10 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
                 {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
-            <p className="text-xs text-surface-400 mt-1">Stored locally in your browser — never sent to our servers.</p>
+            <p className="text-xs text-surface-400 mt-1">
+              {provider === 'github' && 'Use a personal access token with Models read access (models:read). '}
+              Stored only on this device (encrypted by your OS when available) and sent only to the selected provider.
+            </p>
           </div>
 
           {/* Model */}
@@ -162,7 +193,7 @@ export function AISettingsModal({ onClose }: AISettingsModalProps) {
                   type="text"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="Enter model name manually (e.g. grok-3)"
+                  placeholder={`Enter model name manually (e.g. ${MODEL_PLACEHOLDERS[provider]})`}
                   className="w-full px-3 py-2 text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
               </div>

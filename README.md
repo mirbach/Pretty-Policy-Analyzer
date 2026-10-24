@@ -35,6 +35,8 @@ Every policy setting has a built-in AI assistant button. Click it to get a plain
 - **OpenAI** (GPT-4o and others)
 - **xAI** (Grok)
 - **Google Gemini**
+- **Anthropic Claude**
+- **GitHub Copilot** (via GitHub Models; use a personal access token with `models:read`)
 
 Enter your API key once via the Settings icon (top-right). Explanations are cached per-setting per-GPO so they survive tab switches and GPO reloads.
 
